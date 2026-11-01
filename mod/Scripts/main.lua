@@ -68,6 +68,72 @@ local function readProperty(object, key)
 end
 local function typeName(value) local ok, result = pcall(function() return value:type() end); return ok and result or type(value) end
 local function toVector(value) return {X = value.X, Y = value.Y, Z = value.Z} end
+
+-- Estela blanca y freno: campos del VehicleState que se guardan en bruto al final del CSV, y el código
+-- de la columna 9 del fantasma. Todo en una tabla porque el script está al límite de 200 variables locales.
+-- Coche: Drifting. Rasante: Knifing / KnifeScale. Vaina: AirBrakeScale / AirBrakeStrength.
+-- Moto: EnergyBrakeState / EnergyBrakeCharge (aún sin confirmar). Todos: Brake.
+local vehicleStateData = {
+    fields = {'Brake', 'Drifting', 'Knifing', 'KnifeScale', 'AirBrakeScale', 'AirBrakeStrength', 'EnergyBrakeState', 'EnergyBrakeCharge'},
+    columns = 'brake,drifting,knifing,knife_scale,air_brake_scale,air_brake_strength,energy_brake_state,energy_brake_charge',
+}
+
+-- Lee un campo conservando el false (readProperty devuelve nil cuando el valor es false)
+function vehicleStateData.readField(object, key)
+    local ok, value = pcall(function() return object[key] end)
+    if ok then return value end
+end
+
+-- Valores de los campos en este momento; tabla vacía si no hay VehicleState
+function vehicleStateData.read(race, pawn)
+    if race.vehicleStatePawn ~= pawn then race.vehicleStatePawn, race.vehicleState = pawn, readProperty(pawn, 'VehicleState') end
+    local values = {}
+    if not isValid(race.vehicleState) then return values end
+    for _, name in ipairs(vehicleStateData.fields) do values[name] = vehicleStateData.readField(race.vehicleState, name) end
+    return values
+end
+
+-- Un valor para el CSV: true/false como 1/0, números con hasta 3 decimales, vacío si no se pudo leer
+function vehicleStateData.valueText(value)
+    if value == true then return '1' end
+    if value == false then return '0' end
+    if type(value) == 'number' then
+        if value == math.floor(value) then return string.format('%d', value) end
+        return string.format('%.3f', value)
+    end
+    return ''
+end
+
+-- Las columnas del CSV, separadas por comas y en el orden de fields
+function vehicleStateData.csv(values)
+    local texts = {}
+    for index, name in ipairs(vehicleStateData.fields) do texts[index] = vehicleStateData.valueText(values[name]) end
+    return table.concat(texts, ',')
+end
+
+-- Tipo de vehículo según el nombre del evento: CAR (coche), BIKE (moto), SKIMMER (rasante) o PLANE (vaina)
+function vehicleStateData.vehicleType(race)
+    local id = race.event and race.event.id or ''
+    return id:match('_(CAR)_') or id:match('_(BIKE)_') or id:match('_(SKIMMER)_') or id:match('_(PLANE)_')
+end
+
+-- Activo: un true o un número mayor que 0
+function vehicleStateData.isActive(value)
+    return value == true or (type(value) == 'number' and value > 0)
+end
+
+-- Columna 9 del fantasma: W = estela blanca, B = freno, WB = las dos, - = ninguna, vacío = no se pudo leer.
+-- La moto todavía no marca W: falta confirmar qué campo es el bueno.
+function vehicleStateData.trailCode(vehicleType, values)
+    if next(values) == nil then return '' end
+    local isActive, white = vehicleStateData.isActive, false
+    if vehicleType == 'CAR' then white = isActive(values.Drifting)
+    elseif vehicleType == 'SKIMMER' then white = isActive(values.Knifing)
+    elseif vehicleType == 'PLANE' then white = isActive(values.AirBrakeScale)
+    end
+    local code = (white and 'W' or '') .. (isActive(values.Brake) and 'B' or '')
+    return code ~= '' and code or '-'
+end
 local function formatTime(seconds)
     if not seconds then return '--' end
     local minutes = math.floor(seconds / 60)
@@ -1020,7 +1086,7 @@ local function finishRouteSampling(race)
     race.sessionStamp = sessionStamp
     race.telemetryPath, race.summaryPath = basePath .. '.csv', basePath .. '_summary.txt'
     race.filesDeferred, race.pendingSummary = true, {}
-    race.pendingHeader = 'time,lap,lap_time,distance,progress,x,y,z,velocity_x,velocity_y,velocity_z,kmh,heading,offset_from_route,height_above_route,event,boost\n'
+    race.pendingHeader = 'time,lap,lap_time,distance,progress,x,y,z,velocity_x,velocity_y,velocity_z,kmh,heading,offset_from_route,height_above_route,event,boost,' .. vehicleStateData.columns .. '\n'
     -- Route geometry for the app (distances in the direction of the spline)
     local routeLines = {'type,distance,x,y,z'}
     for _, point in ipairs(points) do
@@ -1339,7 +1405,8 @@ local function readGhostFile(path, headerOnly)
         for field in (line .. '\t'):gmatch('([^\t]*)\t') do raw[#raw + 1] = field; fields[#fields + 1] = tonumber(field) end
         if fields[1] and fields[2] and fields[3] then
             points[#points + 1] = {t = fields[1], x = fields[2], y = fields[3], z = fields[4], yaw = fields[5],
-                pitch = fields[6] or (fields[5] and 0), roll = fields[7] or (fields[5] and 0), boost = (raw[8] or ''):match('^%a')}
+                pitch = fields[6] or (fields[5] and 0), roll = fields[7] or (fields[5] and 0), boost = (raw[8] or ''):match('^%a'),
+                trail = raw[9]}   -- columna 9 (W/B/WB/-), nil en los fantasmas anteriores
         end
     end
     file:close()
@@ -1361,7 +1428,7 @@ local function saveOwnGhost(race, total)
     local lines = {string.format('%.3f\t\t%s', total, clockKind)}
     for _, sample in ipairs(race.ghostSamples) do
         local line = string.format('%.2f\t%.0f\t%.0f\t%.0f', sample.at - anchor, sample.x, sample.y, sample.z)
-        if sample.yaw then line = line .. string.format('\t%.1f\t%.1f\t%.1f\t%s', sample.yaw, sample.pitch, sample.roll, sample.boost or '') end
+        if sample.yaw then line = line .. string.format('\t%.1f\t%.1f\t%.1f\t%s\t%s', sample.yaw, sample.pitch, sample.roll, sample.boost or '', sample.trail or '') end
         lines[#lines + 1] = line
     end
     if writeFile(path, table.concat(lines, '\n') .. '\n', 'w') then log('Fantasma: guardada esta carrera (' .. formatTime(total) .. ') como tu fantasma del evento') end
@@ -1595,6 +1662,8 @@ end
 local function ghostStateAt(points, t)
     local from = ghostPointAt(points, t)
     if from.boost == 'A' or from.boost == 'R' then return from.boost end
+    -- Fantasmas con columna 9: el freno real. Los anteriores lo deducen de la pérdida de velocidad.
+    if from.trail and from.trail ~= '' then return from.trail:find('B') and 'B' or nil end
     local function speedAt(time)
         local a, b = ghostPointAt(points, time - 0.1), ghostPointAt(points, time + 0.1)
         local span = b.t - a.t
@@ -2315,6 +2384,9 @@ local function recordSample(race, playerController)
         local zero = now - race.eventTime   -- the moment of the GO in the game clock (the lowest is the freshest reading)
         if not race.eventZero or zero < race.eventZero then race.eventZero = zero end
     end
+    -- Estado del vehículo (estela blanca y freno), una sola lectura para el fantasma y el CSV
+    local stateOk, stateValues = pcall(vehicleStateData.read, race, pawn)
+    if not stateOk then stateValues = {} end
     if (race.eventZero or race.startTime) and not race.eventEnded then
         local samples, elapsed = race.ghostSamples or {}, now - (race.eventZero or race.startTime)
         race.ghostSamples = samples
@@ -2322,15 +2394,19 @@ local function recordSample(race, playerController)
         if #samples == 0 or now >= samples[#samples].at + 0.1 then
             local rotationOk, rotation = pcall(function() return pawn:K2_GetActorRotation() end)
             local sampleBoostOk, sampleBoost = pcall(boostCode, race, pawn)
+            local trailOk, trailCode = pcall(vehicleStateData.trailCode, vehicleStateData.vehicleType(race), stateValues)
             samples[#samples + 1] = {t = elapsed, at = now, x = position.X, y = position.Y, z = position.Z, boost = sampleBoostOk and sampleBoost or nil,
-                yaw = rotationOk and rotation.Yaw or nil, pitch = rotationOk and rotation.Pitch or nil, roll = rotationOk and rotation.Roll or nil}
+                yaw = rotationOk and rotation.Yaw or nil, pitch = rotationOk and rotation.Pitch or nil, roll = rotationOk and rotation.Roll or nil,
+                trail = trailOk and trailCode or ''}
         end
     end
     local boostOk, boost = pcall(boostCode, race, pawn)
     if race.stateWatch then pcall(sampleStateWatch, race, now, boostOk and boost or '') end
-    race.telemetryBuffer[#race.telemetryBuffer + 1] = string.format('%.4f,%d,%.4f,%.1f,%.5f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%.1f,%.1f,%s,%s',
+    local stateCsvOk, stateCsv = pcall(vehicleStateData.csv, stateValues)
+    if not stateCsvOk then stateCsv = vehicleStateData.csv({}) end   -- columnas vacías
+    race.telemetryBuffer[#race.telemetryBuffer + 1] = string.format('%.4f,%d,%.4f,%.1f,%.5f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%.1f,%.1f,%s,%s,%s',
         now - race.clockStart, race.lapNumber + 1, lapTime, distance, distance / routeLength, position.X, position.Y, position.Z,
-        velocity.X, velocity.Y, velocity.Z, kmh, heading, offsetFromRoute, position.Z - routeHeight, events, boostOk and boost or '')
+        velocity.X, velocity.Y, velocity.Z, kmh, heading, offsetFromRoute, position.Z - routeHeight, events, boostOk and boost or '', stateCsv)
     if race.filesDeferred and race.startTime and (now - race.startTime >= FILES_AFTER_SECONDS or race.lapNumber > 0 or race.eventEnded) then commitRaceFiles(race) end
     if #race.telemetryBuffer >= 50 then flushTelemetryBuffer(race) end
     race.previousDistance, race.previousSampleTime, race.previousPosition = distance, now, position
