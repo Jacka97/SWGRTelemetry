@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. Páginas de la app (index.html + inglés)",
+      "type": "shell",
+      "command": "python tools/make_web.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "2. Compilar la app (GalacticRacerTelemetry.exe)",
+      "type": "shell",
+      "command": "go build -ldflags \"-H windowsgui\" -o ../build/GalacticRacerTelemetry.exe .",
+      "options": {
+        "cwd": "${workspaceFolder}/app"
+      },
+      "dependsOn": "1. Páginas de la app (index.html + inglés)",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$go"
+      ]
+    },
+    {
+      "label": "Revisar el mod (Lua)",
+      "type": "shell",
+      "command": "node tools/check_lua.js mod/Scripts/main.lua mod/Scripts/timing_panel.lua",
+      "problemMatcher": []
+    },
+    {
+      "label": "Instalar dependencias de las herramientas (una vez)",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/tools"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Sacar versión (zips en build/)",
+      "type": "shell",
+      "command": "python tools/release.py ${input:version}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "version",
+      "type": "promptString",
+      "description": "Número de la versión nueva (por ejemplo 0.9.32)"
+    }
+  ]
+}

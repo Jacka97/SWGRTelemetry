@@ -1,0 +1,1 @@
+{ "name": "swgr-tools", "private": true, "dependencies": { "@babel/parser": "8.0.8", "@babel/traverse": "8.0.7", "luaparse": "0.3.1" } }

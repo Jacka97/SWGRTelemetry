@@ -1,0 +1,6 @@
+{
+  "Lua.runtime.version": "Lua 5.4",
+  "Lua.diagnostics.globals": ["StaticFindObject", "FindAllOf", "FName", "FText", "LoopInGameThreadWithDelay", "LoopInGameThreadAfterFrames", "ExecuteInGameThread", "RegisterKeyBind", "Key", "ModifierKey", "ForEachUObject", "LoadAsset", "RegisterHook", "NotifyOnNewObject"],
+  "files.encoding": "utf8",
+  "files.associations": { "*.swgr": "json" }
+}

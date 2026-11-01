@@ -1,0 +1,4 @@
+build/
+tools/node_modules/
+app/web/template_en.html
+fonts_sf/
