@@ -599,6 +599,9 @@ html.no-animations *, html.no-animations *::before, html.no-animations *::after 
         <div class="group"><span>Theme</span><div class="options" data-preference="theme"><button type="button" data-value="sith">Sith</button><button type="button" data-value="jedi">Jedi</button><button type="button" data-value="imperial">Imperial</button><button type="button" data-value="galactic">Galactic Racer</button></div></div>
         <div class="group"><span>Hologram effect</span><div class="options" data-preference="hologram"><button type="button" data-value="off">Off</button><button type="button" data-value="soft">Soft</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Strong</button></div></div>
         <div class="group"><span>In-track ghost colour</span><div class="options" data-preference="ghost_color"><button type="button" data-value="cyan">Cyan</button><button type="button" data-value="white">White</button><button type="button" data-value="red">Red</button><button type="button" data-value="green">Green</button><button type="button" data-value="gold">Gold</button><button type="button" data-value="purple">Purple</button></div></div>
+        <div class="group"><span>In-track ghost</span><div class="options" data-preference="ghost_enabled"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
+        <div class="group"><span>Ghost transparency</span><div class="options" data-preference="ghost_transparency"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button></div></div>
+        <div class="group"><span>Ghost trail</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
         <div class="group"><span>Animations</span><div class="options" data-preference="animations"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
         <div class="group"><span>Language</span><div class="options" data-preference="language"><button type="button" data-value="es">Español</button><button type="button" data-value="en">English</button><button type="button" data-value="aurebesh" class="aurebesh-option">Aurebesh</button></div>
           <span class="aurebesh-missing" id="aurebeshMissing">Aurebesh needs the SF Distant Galaxy Symbols font (ShyFonts, free for personal use). It is not included in the app because of its licence: install it in Windows or put it in the «fonts» folder and reopen the app.</span></div>
@@ -2732,7 +2735,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   }
   // Settings (⚙ menu): theme, hologram, animations and language; saved in preferences.txt
   const THEME_NAMES = { sith: 'Sith', jedi: 'Jedi', imperial: 'Imperial', galactic: 'Galactic Racer' };
-  const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan' };   // ghost_color: read by the mod at the next race
+  const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
+    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off' };   // ghost_*: el mod las lee al empezar la siguiente carrera
   // Simple mode shows the essentials; Tryhard (the default) the whole analysis
   const isSimpleMode = () => preference('mode') === 'simple';
   const preference = key => ((state.data && state.data.preferences) || {})[key] || PREFERENCE_DEFAULTS[key];
