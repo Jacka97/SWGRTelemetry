@@ -49,7 +49,7 @@ var (
 	summaryLapLine      = regexp.MustCompile(`^Vuelta (\d+): (\d+):(\d+\.\d+)`)
 	summarySector       = regexp.MustCompile(`S(\d+) (\d+\.\d+)`)
 	summaryHeaderLine   = regexp.MustCompile(`^== (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| ([^|]+) \|.*\| v([\d.]+) \|`)
-	summaryEventLine    = regexp.MustCompile(`^Evento: (LDB_[A-Z0-9_]+) \| modo: ([^|]*)\| vueltas: (\d+)`)
+	summaryEventLine    = regexp.MustCompile(`^Evento: (LDB_[A-Za-z0-9_]+) \| modo: ([^|]*)\| vueltas: (\d+)`)
 	summaryResultLine   = regexp.MustCompile(`^Evento: (\d+):(\d+\.\d+)(?: \| objetivo (\d+):(\d+\.\d+) \(([^)]*)\) \| [+-]\d+\.\d+)?(?: \| (Conseguido|No conseguido))?`)
 	sessionFileName     = regexp.MustCompile(`^(\d{8}_\d{6})(\.csv|\.csv\.gz|_summary\.txt|_resumen\.txt)$`)
 	looseSessionName    = regexp.MustCompile(`^(?:telemetry|telemetria)_(\d{8}_\d{6})_(.+?)(\.csv|\.csv\.gz|_summary\.txt|_resumen\.txt)$`)
