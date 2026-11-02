@@ -502,7 +502,7 @@ local KEYS = {f9 = {KeyName = FName('F9')}, f10 = {KeyName = FName('F10')}, f11 
 local SAFE_MODE_PATH, OPERATION_IN_PROGRESS_PATH = modFile('safe_mode.txt'), modFile('operation_in_progress.txt')
 local SAFE_MODE_OPERATION_NAMES = {timing_panel = 'el panel de tiempos', game_records = 'leer tus récords del juego',
     record_search = 'la búsqueda de récords (Ctrl+Shift+K)', race_hook = 'engancharse a la carrera', recording = 'la grabación',
-    event_names = 'leer los nombres de evento del juego', race_ghost = 'el fantasma en pista', ghost_look = 'el aspecto del fantasma', ghost_vehicle = 'copiar tu vehículo para el fantasma', state_watch = 'el diagnóstico de estados del vehículo', ghost_trail = 'la estela del fantasma', effects_scan = 'el diagnóstico de efectos del vehículo'}
+    event_names = 'leer los nombres de evento del juego', race_ghost = 'el fantasma en pista', ghost_look = 'el aspecto del fantasma', ghost_vehicle = 'copiar tu vehículo para el fantasma', state_watch = 'el diagnóstico de estados del vehículo', ghost_trail = 'la estela del fantasma', effects_scan = 'el diagnóstico de efectos del vehículo', ghost_flame = 'la llama del fantasma'}
 -- Operation names written by older versions (in operation_in_progress.txt, then en_curso.txt)
 local OLD_OPERATION_NAMES = {panel = 'timing_panel', records = 'game_records', busqueda = 'record_search', carrera = 'race_hook',
     grabacion = 'recording', nombres = 'event_names'}
@@ -1686,26 +1686,35 @@ end
 -- juego pone su llama). Su posición respecto al centro del vehículo gira con el fantasma (rumbo, cabeceo e
 -- inclinación), así que la rasante de canto lleva sus líneas una encima de otra. Si un vehículo no tiene
 -- ningún VFX_Engine: la moto, una línea en el centro; el resto, dos a 1,5 m de cada lado.
--- Cada línea es como un polígono: tramos rectos (cilindros) que se tocan justo en sus extremos, sin pasarse
--- (si se alargan, en las curvas se cruzan y forman una X), con una esfera del mismo grosor en cada vértice
--- para que los giros y la salida del propulsor se vean redondeados.
+-- Cada línea es una cinta plana, como una trazada: tramos rectos (cubos aplastados, tumbados en el plano del
+-- fantasma) que se tocan justo en sus extremos, sin pasarse (si se alargan, en las curvas se cruzan y forman
+-- una X), con un disco plano del mismo ancho en cada vértice para que los giros se vean redondeados.
 -- Solo se usa lo que trae el fantasma: sin la columna 8 no hay estela (nada se deduce).
 -- Seguridad (el juego se cerró dos veces con la estela antigua, al entrar el ramjet): cada material de color
 -- queda puesto toda la carrera en una pieza oculta, para que el juego no lo borre al limpiar memoria, y
 -- antes de usar una pieza o un material se comprueba que siga existiendo.
 -- Rendimiento (con muchas piezas había tirones): 8 tramos por línea, se actualiza cada 2 fotogramas, y no
 -- se dibuja lo que queda detrás de ti.
--- De lejos se ve la línea (para seguir la trazada); a menos de 25 m de ti se va ocultando pieza a pieza y
--- queda la llama del holograma.
+-- De lejos se ve la línea, para seguir la trazada; entre 100 y 40 m de ti se va afinando y más cerca queda
+-- la llama del holograma.
 local ghostTrail = {
-    PIECES = 8, STEP = 1.5 / 8,
+    PIECES = 8, STEP = 2 / 8,   -- 2 s de recorrido (con 1,5 s se veía corta)
     UPDATE_EVERY_FRAMES = 2,
     ENGINE_SOCKET = 'VFX_Engine',
-    -- De cerca se ve la llama del juego en las toberas del holograma; la línea se oculta a menos de 25 m de ti
-    NEAR_DISTANCE = 2500,   -- cm
-    COLORS = {A = {1, 0.45, 0.05}, R = {0.2, 0.55, 1}},
-    -- Grosor en cm: más gruesa si el vehículo tiene un solo propulsor
-    WIDTH_ONE_ENGINE = 30, WIDTH_SEVERAL_ENGINES = 25,
+    -- La línea solo se ve a más de 40 m de ti (aunque no veas al fantasma: si no, se atravesaban sus líneas);
+    -- cerca queda la llama en sus toberas. Entre 40 y 100 m se va afinando, para que el extremo
+    -- cercano no aparezca cortado de golpe.
+    NEAR_DISTANCE = 4000,   -- cm (se probó con 25, 40, 50 y 100 m)
+    -- cm en los que la línea pasa de nada a su ancho completo. Con 20 m se notaba un salto: cada tramo mide
+    -- unos 25 m a 100 m/s, así que un tramo entero pasaba de golpe de casi nada a todo el ancho
+    FADE_DISTANCE = 6000,
+    FADE_HIDDEN = 0.05,     -- por debajo de este ancho (en proporción) el tramo no se dibuja
+    -- Naranja con brillo doble (valores por encima de 1) para que la postcombustión resalte más que el ramjet
+    COLORS = {A = {2, 0.6, 0}, R = {0.2, 0.55, 1}},
+    -- Ancho en cm: más ancha si el vehículo tiene un solo propulsor (con 30 y 25 se veía muy fina)
+    WIDTH_ONE_ENGINE = 55, WIDTH_SEVERAL_ENGINES = 45,
+    THICKNESS_CM = 2,   -- alto de la cinta: lo mínimo para que no tenga volumen
+    SCALE_TOLERANCE = 0.03,     -- el tamaño de una pieza solo se actualiza si cambia más de un 3 %
     -- Sin VFX_Engine: posición de cada propulsor respecto al centro, en cm (x adelante, y derecha, z arriba)
     FALLBACK_ONE_ENGINE = {{x = 0, y = 0, z = 0}},
     FALLBACK_TWO_ENGINES = {{x = 0, y = -150, z = 0}, {x = 0, y = 150, z = 0}},
@@ -1719,6 +1728,22 @@ function ghostTrail.axes(pitch, yaw, roll)
     return {X = cp * cy, Y = cp * sy, Z = sp},
         {X = sr * sp * cy - cr * sy, Y = sr * sp * sy + cr * cy, Z = -sr * cp},
         {X = -(cr * sp * cy + sr * sy), Y = cy * sr - cr * sp * sy, Z = cr * cp}
+end
+
+-- Giro de Unreal de una pieza plana que apunta en la dirección forward (de largo 1) y tiene su cara hacia up:
+-- el eje Y de la pieza queda de lado y el Z, perpendicular a la cinta (como las cuentas de Unreal al pasar de ejes a giro)
+function ghostTrail.flatRotation(forward, up)
+    local function cross(a, b) return {X = a.Y * b.Z - a.Z * b.Y, Y = a.Z * b.X - a.X * b.Z, Z = a.X * b.Y - a.Y * b.X} end
+    local right = cross(up, forward)
+    local rightLength = math.sqrt(right.X * right.X + right.Y * right.Y + right.Z * right.Z)
+    -- si la cinta va justo hacia arriba o hacia abajo del fantasma, sin giro de lado
+    if rightLength < 1e-4 then right = {X = 0, Y = 1, Z = 0} else right = {X = right.X / rightLength, Y = right.Y / rightLength, Z = right.Z / rightLength} end
+    local top = cross(forward, right)
+    local pitch = math.deg(math.atan(forward.Z, math.sqrt(forward.X * forward.X + forward.Y * forward.Y)))
+    local yaw = math.atan(forward.Y, forward.X)
+    local sideX, sideY = -math.sin(yaw), math.cos(yaw)
+    local roll = math.deg(math.atan(top.X * sideX + top.Y * sideY, right.X * sideX + right.Y * sideY))
+    return {Pitch = pitch, Yaw = math.deg(yaw), Roll = roll}
 end
 
 -- Un punto del vehículo (x adelante, y derecha, z arriba) llevado al mundo desde center con ese giro
@@ -1775,6 +1800,13 @@ function ghostTrail.findShape(name)
 end
 
 -- Una pieza de la estela: una forma sin colisión, oculta y lejos, hasta que se use
+-- Menos trabajo de dibujo para las piezas del fantasma (holograma, llama y estela): sin sombra (el juego
+-- las volvía a dibujar para las sombras) y sin calcomanías del escenario encima
+function ghostTrail.lightRendering(component)
+    pcall(function() component:SetCastShadow(false) end)
+    pcall(function() component:SetReceivesDecals(false) end)
+end
+
 function ghostTrail.spawnPiece(world, actorClass, shape, where)
     local actor = world:SpawnActor(actorClass, {X = where.X, Y = where.Y, Z = where.Z - 10000}, {Pitch = 0, Yaw = 0, Roll = 0})
     if not isValid(actor) then return nil end
@@ -1783,16 +1815,43 @@ function ghostTrail.spawnPiece(world, actorClass, shape, where)
     pcall(function() component:SetMobility(2) end)
     pcall(function() component:SetStaticMesh(shape) end)
     pcall(function() component:SetCollisionEnabled(0) end)
+    ghostTrail.lightRendering(component)
     pcall(function() actor:SetActorHiddenInGame(true) end)
     return {actor = actor, component = component, shown = false}
+end
+
+-- Los materiales naranja (A) y azul (R) de la estela o de la llama (use: 'trail' o 'flame'): se crean una vez
+-- y cada uno queda puesto toda la carrera en una pieza oculta que no se mueve (para que el juego no lo borre).
+-- La estela tiene siempre la misma opacidad (en la app solo se activa o desactiva); la llama sigue la
+-- transparencia elegida.
+-- glass (opcional): el cristal que hay que usar; highlights (opcional): el brillo de cada color
+function ghostTrail.boostMaterials(ghost, world, actorClass, shape, where, use, colors, glass, highlights)
+    ghost.boostMaterials = ghost.boostMaterials or {}
+    local key = use .. (glass or '')
+    if ghost.boostMaterials[key] then return ghost.boostMaterials[key] end
+    local materials = {}
+    ghost.actors = ghost.actors or {ghost.actor}
+    for _, color in ipairs({'A', 'R'}) do
+        local rgb = (colors or ghostTrail.COLORS)[color]
+        local material = hologramMaterial(world, {R = rgb[1], G = rgb[2], B = rgb[3]}, use, {glass = glass, highlight = highlights and highlights[color]})
+        local holder = isValid(material) and ghostTrail.spawnPiece(world, actorClass, shape, where) or nil
+        if holder then
+            pcall(function() holder.component:SetMaterial(0, material) end)
+            ghost.actors[#ghost.actors + 1] = holder.actor
+            materials[color] = material
+        end
+    end
+    ghost.boostMaterials[key] = materials
+    return materials
 end
 
 function ghostTrail.spawn(ghost, pawn, world, vehicleType)
     if not ghostTrail.hasMotorData(ghost.points) then return 'sin estela (el fantasma no trae datos de postcombustión ni ramjet)' end
     local actorClass = StaticFindObject('/Script/Engine.StaticMeshActor')
-    -- Tramos: cilindro (si no está, el cubo, que se coloca igual). Vértices: esfera (si no está, sin vértices).
-    local segmentShape = ghostTrail.findShape('Cylinder') or ghostTrail.findShape('Cube')
-    local jointShape = ghostTrail.findShape('Sphere')
+    -- Una cinta plana, como una trazada (el cilindro daba volumen): tramos con el cubo aplastado y, en los
+    -- vértices, el cilindro aplastado como un disco (si no está, sin vértices)
+    local segmentShape = ghostTrail.findShape('Cube')
+    local jointShape = ghostTrail.findShape('Cylinder')
     if not (isValid(actorClass) and segmentShape and isValid(world)) then return 'sin estela (falta la pieza básica)' end
     -- De dónde sale cada línea
     local engines, engineSource = {}, 'VFX_Engine'
@@ -1804,34 +1863,31 @@ function ghostTrail.spawn(ghost, pawn, world, vehicleType)
     local width = #engines == 1 and ghostTrail.WIDTH_ONE_ENGINE or ghostTrail.WIDTH_SEVERAL_ENGINES
     local where = pawn:K2_GetActorLocation()
     ghost.actors = ghost.actors or {ghost.actor}
-    local trail = {materials = {}, lanes = {}}
-    -- Materiales: cada color puesto en una pieza oculta que no se mueve en toda la carrera
-    for _, color in ipairs({'A', 'R'}) do
-        local rgb = ghostTrail.COLORS[color]
-        local material = hologramMaterial(world, {R = rgb[1], G = rgb[2], B = rgb[3], A = 0.6})
-        local holder = isValid(material) and ghostTrail.spawnPiece(world, actorClass, segmentShape, where) or nil
-        if holder then
-            pcall(function() holder.component:SetMaterial(0, material) end)
-            ghost.actors[#ghost.actors + 1] = holder.actor
-            trail.materials[color] = material
-        end
-    end
+    local trail = {materials = ghostTrail.boostMaterials(ghost, world, actorClass, segmentShape, where, 'trail'), lanes = {}}
     if not next(trail.materials) then return 'sin estela (sin material)' end
     local pieceCount = 0
-    local function addPiece(shape)
-        local piece = shape and ghostTrail.spawnPiece(world, actorClass, shape, where)
-        if piece then
-            ghost.actors[#ghost.actors + 1] = piece.actor
-            pieceCount = pieceCount + 1
+    -- Cada tramo y cada vértice tiene una pieza de cada color, con su material puesto desde el principio:
+    -- cambiar el material en carrera daba tirones (el color cambia a lo largo de la línea a cada momento)
+    local function addSlot(shape)
+        if not shape then return nil end
+        local slot = {}
+        for color, material in pairs(trail.materials) do
+            local piece = ghostTrail.spawnPiece(world, actorClass, shape, where)
+            if piece then
+                pcall(function() piece.component:SetMaterial(0, material) end)
+                ghost.actors[#ghost.actors + 1] = piece.actor
+                pieceCount = pieceCount + 1
+                slot[color] = piece
+            end
         end
-        return piece
+        return next(slot) and slot or nil
     end
     local positions = {}
     for _, engine in ipairs(engines) do
         local segments, joints = {}, {}
         for index = 1, ghostTrail.PIECES do
-            segments[index] = addPiece(segmentShape)
-            joints[index] = addPiece(jointShape)
+            segments[index] = addSlot(segmentShape)
+            joints[index] = addSlot(jointShape)
         end
         trail.lanes[#trail.lanes + 1] = {offset = engine, width = width, segments = segments, joints = joints}
         positions[#positions + 1] = string.format('%.0f/%.0f/%.0f', engine.x, engine.y, engine.z)
@@ -1849,18 +1905,35 @@ function ghostTrail.hidePiece(piece)
     end
 end
 
+-- Oculta las piezas de un tramo o vértice (una por color)
+function ghostTrail.hideSlot(slot)
+    if not slot then return end
+    for _, piece in pairs(slot) do ghostTrail.hidePiece(piece) end
+end
+
 function ghostTrail.hideAll(trail)
     for _, lane in ipairs(trail.lanes) do
         for index = 1, ghostTrail.PIECES do
-            ghostTrail.hidePiece(lane.segments[index])
-            ghostTrail.hidePiece(lane.joints[index])
+            ghostTrail.hideSlot(lane.segments[index])
+            ghostTrail.hideSlot(lane.joints[index])
         end
     end
 end
 
--- Muestra una pieza con su color (el material solo se cambia si cambia el color)
-function ghostTrail.showPiece(piece, color, material)
-    if piece.color ~= color then piece.color = color; pcall(function() piece.component:SetMaterial(0, material) end) end
+-- Coloca y muestra la pieza del color pedido de un tramo o vértice, y oculta la del otro color.
+-- El tamaño solo se manda al juego si cambia más de SCALE_TOLERANCE (es lo que más se repite).
+function ghostTrail.placeSlot(slot, color, location, rotation, scale)
+    local piece = slot and slot[color]
+    if not (piece and isValid(piece.actor)) then ghostTrail.hideSlot(slot); return end
+    for otherColor, other in pairs(slot) do
+        if otherColor ~= color then ghostTrail.hidePiece(other) end
+    end
+    piece.actor:K2_SetActorLocationAndRotation(location, rotation, false, {}, true)
+    local last, tolerance = piece.scale, ghostTrail.SCALE_TOLERANCE
+    if not last or math.abs(last.X - scale.X) > last.X * tolerance or math.abs(last.Y - scale.Y) > last.Y * tolerance then
+        piece.actor:SetActorScale3D(scale)
+        piece.scale = scale
+    end
     if not piece.shown then piece.shown = true; piece.actor:SetActorHiddenInGame(false) end
 end
 
@@ -1871,12 +1944,20 @@ function ghostTrail.isAheadOfYou(race, location)
     return (location.X - position.X) * forward.X + (location.Y - position.Y) * forward.Y > 0
 end
 
--- Si un punto está a menos de NEAR_DISTANCE de ti; sin datos, cuenta como lejos
-function ghostTrail.isNearYou(race, location)
+-- Distancia de un punto a ti, en cm; sin datos, muy lejos
+function ghostTrail.distanceToYou(race, location)
     local position = race and race.lastPosition
-    if not position then return false end
+    if not position then return math.huge end
     local dx, dy, dz = location.X - position.X, location.Y - position.Y, location.Z - position.Z
-    return dx * dx + dy * dy + dz * dz < ghostTrail.NEAR_DISTANCE * ghostTrail.NEAR_DISTANCE
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+-- Ancho (en proporción) según la distancia: va de 0 a 1 en los FADE_DISTANCE cm después de NEAR_DISTANCE,
+-- en curva suave (empieza y acaba despacio) para que no se note dónde empieza ni dónde acaba
+function ghostTrail.fadeFactor(race, location)
+    local beyond = ghostTrail.distanceToYou(race, location) - ghostTrail.NEAR_DISTANCE
+    local progress = math.max(0, math.min(1, beyond / ghostTrail.FADE_DISTANCE))
+    return progress * progress * (3 - 2 * progress)
 end
 
 -- Dónde está una tobera del fantasma en el instante t: su centro más la posición de la tobera girada con él
@@ -1887,7 +1968,7 @@ function ghostTrail.enginePosition(ghost, t, offset)
 end
 
 -- Cada tramo cubre STEP segundos del recorrido reciente del fantasma: va del punto "older" al "newer",
--- y en el "newer" (el más cercano al fantasma) lleva su esfera de vértice
+-- y en el "newer" (el más cercano al fantasma) lleva su disco de vértice
 function ghostTrail.draw(ghost, elapsed, race)
     local trail, firstTime = ghost.trail, ghost.points[1].t
     trail.frame = (trail.frame or 0) + 1
@@ -1899,39 +1980,228 @@ function ghostTrail.draw(ghost, elapsed, race)
         local point = older > firstTime and ghostPointAt(ghost.points, newer) or nil
         local color = point and ghostTrail.colorAt(point)
         local material = color and trail.materials[color]
-        local thinner = 1 - 0.6 * (index - 1) / ghostTrail.PIECES   -- más fina cuanto más atrás
+        local thinner = 1 - 0.6 * (index - 0.5) / ghostTrail.PIECES   -- más fina cuanto más atrás (en el centro del tramo)
         for _, lane in ipairs(trail.lanes) do
             local segment, joint = lane.segments[index], lane.joints[index]
-            local start, finish
+            local start, finish, middle, fade
             if material and isValid(material) then
                 start = ghostTrail.enginePosition(ghost, older, lane.offset)
                 finish = ghostTrail.enginePosition(ghost, newer, lane.offset)
-                -- detrás de ti no se ve; cerca, la línea deja paso a la llama del holograma
-                if not ghostTrail.isAheadOfYou(race, finish) or ghostTrail.isNearYou(race, finish) then start, finish = nil, nil end
+                middle = {X = (start.X + finish.X) / 2, Y = (start.Y + finish.Y) / 2, Z = (start.Z + finish.Z) / 2}
+                -- La línea se afina poco a poco al acercarse a ti (y con el fantasma a la vista deja paso a su llama).
+                -- También sin ver al fantasma: la cola de la estela (2 s) llega hasta ti si vas a menos de 2 s de él,
+                -- y se atravesaban las líneas a todo su ancho
+                fade = ghostTrail.fadeFactor(race, middle)
+                -- detrás de ti no se ve; demasiado fina, tampoco
+                if not ghostTrail.isAheadOfYou(race, finish) or fade < ghostTrail.FADE_HIDDEN then start, finish = nil, nil end
             end
             local dx, dy, dz = 0, 0, 0
             if start then dx, dy, dz = finish.X - start.X, finish.Y - start.Y, finish.Z - start.Z end
             local length = math.sqrt(dx * dx + dy * dy + dz * dz)
             if not start or length <= 1 then
-                ghostTrail.hidePiece(segment)
-                ghostTrail.hidePiece(joint)
+                ghostTrail.hideSlot(segment)
+                ghostTrail.hideSlot(joint)
             else
-                local size = lane.width * thinner / 100
-                -- Tramo: el cilindro está de pie (eje Z); se tumba 90 grados para que apunte de start a finish
-                if segment and isValid(segment.actor) then
-                    local pitch, yaw = math.deg(math.atan(dz, math.sqrt(dx * dx + dy * dy))), math.deg(math.atan(dy, dx))
-                    local middle = {X = (start.X + finish.X) / 2, Y = (start.Y + finish.Y) / 2, Z = (start.Z + finish.Z) / 2}
-                    segment.actor:K2_SetActorLocationAndRotation(middle, {Pitch = pitch - 90, Yaw = yaw, Roll = 0}, false, {}, true)
-                    segment.actor:SetActorScale3D({X = size, Y = size, Z = length / 100})
-                    ghostTrail.showPiece(segment, color, material)
-                end
-                -- Vértice: una esfera del mismo grosor en el extremo más cercano al fantasma
-                if joint and isValid(joint.actor) then
-                    joint.actor:K2_SetActorLocation(finish, false, {}, true)
-                    joint.actor:SetActorScale3D({X = size, Y = size, Z = size})
-                    ghostTrail.showPiece(joint, color, material)
+                local size, flat = lane.width * thinner * fade / 100, ghostTrail.THICKNESS_CM / 100
+                -- La cinta va de start a finish, tumbada en el plano del fantasma (su "arriba" en ese momento)
+                local _, _, up = ghostTrail.axes(point.pitch or 0, point.yaw or 0, point.roll or 0)
+                local rotation = ghostTrail.flatRotation({X = dx / length, Y = dy / length, Z = dz / length}, up)
+                ghostTrail.placeSlot(segment, color, middle, rotation, {X = length / 100, Y = size, Z = flat})
+                -- Vértice: un disco plano del mismo ancho en el extremo más cercano al fantasma (redondea las curvas)
+                ghostTrail.placeSlot(joint, color, finish, rotation, {X = size, Y = size, Z = flat})
+            end
+        end
+    end
+end
+
+-- Llama del fantasma: las formas de la llama de tu vehículo (EngineFlareMesh y EngineRamjetMesh, que cambian
+-- con el modelo) puestas como piezas propias en el VFX_Engine de cada motor del holograma, con el naranja y
+-- el azul de la estela. Con A se ve el destello naranja, con R la forma del ramjet en azul, y con N nada.
+-- No usa el efecto del juego (NS_RaceEngine): su color depende de valores globales que mueve tu vehículo, y la
+-- llama del fantasma acababa pintándose según tú. Las mallas y el tamaño se leen una sola vez, al crear el
+-- fantasma, de la llama de tu vehículo; en carrera solo cuenta la columna 8 del fantasma.
+-- Van enganchadas a la tobera del holograma: se mueven con él sin coste; solo se muestran u ocultan al cambiar.
+-- De cerca se ve la llama; de lejos, la línea de la estela.
+local ghostFlame = {
+    ENGINE_EFFECT = 'NS_RaceEngine',
+    ENGINE_SOCKET = 'VFX_Engine',
+    SNAP_TO_TARGET = 2,   -- EAttachmentRule: pegada al punto del motor
+    -- Las piezas de la llama: con qué boost se ven, qué forma usan y cuánto se estiran.
+    -- Las formas son pequeñas (un disco de 1 m y un anillo de 50 cm): el efecto del juego las estira hacia atrás.
+    -- Aquí se estiran a lo largo del eje X del punto del motor (stretch), se ensanchan para cubrir el motor
+    -- (width) y se desplazan hacia atrás para empezar en la tobera. El ramjet es un anillo: con él va también
+    -- el disco del destello en azul, para que no se vea un agujero negro en el centro.
+    -- invert: la forma tiene la parte ancha en el otro lado (el destello va al revés que el anillo del ramjet)
+    -- pull: parte de su media longitud que se acerca a la tobera (para empalmar con la pieza de delante)
+    PIECES = {
+        -- Postcombustión: como el ramjet (el disco solo apenas se veía sobre el cristal), en naranja y un 15 % más pequeña
+        {boost = 'A', shape = 'EngineRamjetMesh', stretch = 5, width = 1.5},
+        {boost = 'A', shape = 'EngineFlareMesh', stretch = 5, width = 1.3, invert = true, pull = 0.5},
+        -- base en la tobera para tapar el hueco desde detrás: la esfera básica del motor aplastada como un disco
+        -- (la forma del destello también es un aro hueco y no tapaba nada); a la mitad de ancho, se veía grande
+        {boost = 'A', basicShape = 'Sphere', stretch = 0.4, width = 0.7},
+        {boost = 'R', shape = 'EngineRamjetMesh', stretch = 6, width = 1.8},
+        {boost = 'R', shape = 'EngineFlareMesh', stretch = 6, width = 1.6, invert = true, pull = 0.5},   -- quedaba un hueco con el anillo
+        {boost = 'R', basicShape = 'Sphere', stretch = 0.4, width = 0.85},   -- base maciza en la tobera, a la mitad (1,7 era grande)
+    },
+    -- Colores de la llama, más claros que los de la estela (el cristal los oscurece). El naranja necesita el
+    -- doble de brillo que el azul para verse igual de vivo: el cristal filtra el fondo (cielo y pista, más bien
+    -- azulados o grises) y con naranja deja pasar poca luz.
+    -- El naranja, dentro de 0 a 1: con valores mayores el juego recorta rojo y verde al máximo y salía amarillo
+    -- o verde oliva. El brillo se da aparte, con HIGHLIGHT (Highlight Color Multiplier del cristal).
+    -- Con {1; 0,6; 0,15} y el mismo brillo que el azul, el naranja seguía oscuro: más puro y con el doble de brillo
+    COLORS = {A = {1, 0.5, 0.05}, R = {0.7, 1.3, 2.5}},   -- con 0,4 de verde salía casi rojo
+    HIGHLIGHT = {A = 16, R = 8},
+    -- Cristal del juego de cada boost, elegido comparándolos en pista (2026-11-02): la postcombustión se ve
+    -- mejor con Pepper y el ramjet con Potato. Descartado MI_Onion_Glass: solo tiene color en el borde
+    -- (Color Edge) y se veía más oscuro. Si falta uno, se usa el cristal de siempre.
+    GLASS = {A = 'MI_Pepper_02_Glass', R = 'MI_Potato_Glass'},
+    -- Hacia dónde sale el chorro se calcula en cada motor: el eje X de VFX_Engine apunta hacia el morro
+    -- (la llama salía delante del motor), pero se compara con el vehículo por si algún modelo lo tiene al revés.
+    OUTWARD_CM = 0,   -- desplazamiento extra hacia fuera de la tobera, por si hay que afinar
+    -- Tipo de cada valor de usuario del efecto (lo que no está aquí y no es malla, es sí/no)
+    INTEGERS = {VehicleType = true, VehicleIndex = true, EngineGear = true, RamjetMode = true},
+    FLOATS = {EngineSize = true, MinRadius = true, MaxRadius = true, NozzleDilationScale = true},
+}
+
+-- Tipo de un valor por su nombre: malla, entero, decimal o sí/no
+function ghostFlame.kindOf(shortName)
+    if shortName:find('Mesh', 1, true) then return 'object' end
+    if ghostFlame.INTEGERS[shortName] then return 'integer' end
+    if ghostFlame.FLOATS[shortName] then return 'float' end
+    return 'bool'
+end
+
+-- Valores de usuario de un efecto, leídos de donde el efecto los guarda (OverrideParameters):
+-- la lista de nombres con su posición, los bytes de los números y la lista de objetos (mallas)
+function ghostFlame.readParameters(component)
+    local store = readProperty(component, 'OverrideParameters')
+    if not store then return {}, 'sin OverrideParameters' end
+    local bytes, objects, parameters = {}, {}, {}
+    pcall(function() store.ParameterData:ForEach(function(_, element) bytes[#bytes + 1] = element:get() end) end)
+    pcall(function() store.UObjects:ForEach(function(_, element) objects[#objects + 1] = element:get() end) end)
+    pcall(function()
+        store.SortedParameterOffsets:ForEach(function(_, element)
+            local entry, name, offset = element:get(), '?', nil
+            pcall(function() name = entry.Name:ToString() end)
+            pcall(function() offset = entry.Offset end)
+            parameters[#parameters + 1] = {name = name, short = name:gsub('^User%.', ''), offset = offset}
+        end)
+    end)
+    for _, parameter in ipairs(parameters) do
+        parameter.kind = ghostFlame.kindOf(parameter.short)
+        local offset = parameter.offset
+        if parameter.kind == 'object' then
+            parameter.value = offset and objects[offset + 1]
+        elseif offset and bytes[offset + 4] then
+            local packed = string.char(bytes[offset + 1], bytes[offset + 2], bytes[offset + 3], bytes[offset + 4])
+            parameter.value = parameter.kind == 'float' and string.unpack('<f', packed) or string.unpack('<i4', packed)
+        end
+    end
+    return parameters, string.format('%d valores, %d bytes, %d objetos', #parameters, #bytes, #objects)
+end
+
+-- Tamaño de una malla (medio ancho en x, y, z), para el log: sirve para ajustar orientación y escala
+function ghostFlame.meshSize(mesh)
+    local text = '?'
+    pcall(function()
+        local extent = mesh:GetBounds().BoxExtent
+        text = string.format('%.0fx%.0fx%.0f', extent.X, extent.Y, extent.Z)
+    end)
+    return text
+end
+
+function ghostFlame.spawn(ghost, pawn)
+    if not ghostTrail.hasMotorData(ghost.points) then return 'sin llama (el fantasma no trae datos de postcombustión ni ramjet)' end
+    local actorClass = StaticFindObject('/Script/Engine.StaticMeshActor')
+    local world
+    pcall(function() world = pawn:GetWorld() end)
+    if not (isValid(actorClass) and isValid(world)) then return 'sin llama (falta la pieza básica)' end
+    local where = pawn:K2_GetActorLocation()
+    -- El material de cada boost, con su cristal (si no está en esta partida, el cristal de siempre)
+    local materials, glassNotes = {}, {}
+    for _, boost in ipairs({'A', 'R'}) do
+        local glass = ghostFlame.GLASS[boost]
+        local material = ghostTrail.boostMaterials(ghost, world, actorClass, ghostTrail.findShape('Cube'), where, 'flame', ghostFlame.COLORS, glass, ghostFlame.HIGHLIGHT)[boost]
+        if not material then
+            glass = 'cristal de siempre'
+            material = ghostTrail.boostMaterials(ghost, world, actorClass, ghostTrail.findShape('Cube'), where, 'flame', ghostFlame.COLORS, nil, ghostFlame.HIGHLIGHT)[boost]
+        end
+        if material then materials[boost] = material; glassNotes[#glassNotes + 1] = boost .. ' ' .. glass end
+    end
+    if not next(materials) then return 'sin llama (sin material)' end
+    local socket = FName(ghostFlame.ENGINE_SOCKET)
+    local engines, notes = {}, {}
+    for _, part in ipairs(ghost.parts or {}) do
+        local copyComponent = isValid(part.copy) and readProperty(part.copy, 'StaticMeshComponent')
+        local hasSocket = false
+        if isValid(copyComponent) then pcall(function() hasSocket = copyComponent:DoesSocketExist(socket) end) end
+        local source = hasSocket and ghostFlame.findSourceFlame(pawn, part.source) or nil
+        if source then
+            -- Las formas y el tamaño de la llama de ese motor de tu vehículo, leídos una vez
+            local meshes, size = {}, 1
+            for _, parameter in ipairs(ghostFlame.readParameters(source)) do
+                if parameter.short == 'EngineSize' and type(parameter.value) == 'number' and parameter.value > 0 then size = parameter.value end
+                if parameter.kind == 'object' and isValid(parameter.value) then meshes[parameter.short] = parameter.value end
+            end
+            -- Signo del eje X del punto del motor hacia fuera de la tobera (hacia atrás del vehículo)
+            local outwardSign = -1
+            pcall(function()
+                local socketRotation, pawnRotation = copyComponent:GetSocketRotation(socket), pawn:K2_GetActorRotation()
+                local socketForward = ghostTrail.axes(socketRotation.Pitch, socketRotation.Yaw, socketRotation.Roll)
+                local vehicleForward = ghostTrail.axes(pawnRotation.Pitch, pawnRotation.Yaw, pawnRotation.Roll)
+                local dot = socketForward.X * vehicleForward.X + socketForward.Y * vehicleForward.Y + socketForward.Z * vehicleForward.Z
+                outwardSign = dot > 0 and -1 or 1
+            end)
+            local engine = {pieces = {}}
+            for _, spec in ipairs(ghostFlame.PIECES) do
+                local mesh = spec.basicShape and ghostTrail.findShape(spec.basicShape) or meshes[spec.shape]
+                local piece = mesh and materials[spec.boost] and ghostTrail.spawnPiece(world, actorClass, mesh, where)
+                if piece then
+                    pcall(function() piece.component:SetMaterial(0, materials[spec.boost]) end)
+                    pcall(function() piece.actor:K2_AttachToComponent(copyComponent, socket, ghostFlame.SNAP_TO_TARGET, ghostFlame.SNAP_TO_TARGET, ghostFlame.SNAP_TO_TARGET, false) end)
+                    local length, width = size * spec.stretch, size * spec.width
+                    pcall(function() piece.actor:SetActorRelativeScale3D({X = length, Y = width, Z = width}) end)
+                    -- Media pieza hacia atrás, para que empiece en la tobera
+                    local halfLength = 0
+                    pcall(function() halfLength = mesh:GetBounds().BoxExtent.X * length end)
+                    local outward = halfLength * (1 - (spec.pull or 0)) + ghostFlame.OUTWARD_CM * size
+                    pcall(function() piece.actor:K2_SetActorRelativeLocation({X = outward * outwardSign, Y = 0, Z = 0}, false, {}, true) end)
+                    -- Estirada, la forma es como una trompeta con la parte ancha en su lado +X: se gira 180 grados
+                    -- solo si ese lado quedaría lejos de la tobera, para que la parte ancha salga del motor
+                    local flip = outwardSign > 0
+                    if spec.invert then flip = not flip end
+                    if flip then pcall(function() piece.actor:K2_SetActorRelativeRotation({Pitch = 0, Yaw = 180, Roll = 0}, false, {}, true) end) end
+                    piece.boost = spec.boost
+                    pcall(function() piece.component:SetVisibility(false, false) end)   -- oculta hasta que toque su boost
+                    engine.pieces[#engine.pieces + 1] = piece
+                    ghost.actors[#ghost.actors + 1] = piece.actor
+                    notes[#notes + 1] = string.format('%s %s (%s, tamaño %.2f, eje %s)', spec.boost, fullName(mesh):match('([^%.]+)$') or '?', ghostFlame.meshSize(mesh), size,
+                        outwardSign < 0 and 'hacia el morro' or 'hacia atrás')
                 end
             end
+            if next(engine.pieces) then engines[#engines + 1] = engine end
+        end
+    end
+    if #engines == 0 then return 'sin llama (no se encontró la llama de tus motores)' end
+    ghost.flameEngines = engines
+    return string.format('llama propia en %d motor(es) (cristales: %s): %s', #engines, table.concat(glassNotes, ', '), table.concat(notes, ', '))
+end
+
+-- Cada fotograma: se ve la forma del boost que usa el fantasma (solo se toca al cambiar)
+function ghostFlame.update(ghost, elapsed)
+    local point = ghostPointAt(ghost.points, elapsed)
+    local boost = point and point.boost
+    if boost ~= 'A' and boost ~= 'R' then boost = 'N' end
+    if ghost.flameBoost == boost then return end
+    ghost.flameBoost = boost
+    for _, engine in ipairs(ghost.flameEngines) do
+        for _, piece in ipairs(engine.pieces) do
+            local visible = piece.boost == boost
+            -- Se oculta el actor y también su malla: enganchada al holograma, ocultar solo el actor no siempre basta
+            if isValid(piece.actor) then pcall(function() piece.actor:SetActorHiddenInGame(not visible) end) end
+            if isValid(piece.component) then pcall(function() piece.component:SetVisibility(visible, false) end) end
+            piece.shown = visible
         end
     end
 end
@@ -1964,6 +2234,7 @@ local function moveRaceGhost()
         ghost.actor:K2_SetActorLocation(location, false, {}, true)
     end
     if ghost.trail then pcall(ghostTrail.draw, ghost, elapsed, race) end
+    if ghost.flameEngines then pcall(ghostFlame.update, ghost, elapsed) end
 end
 local ghostLoopStarted, ghostMoveFailed = false, false
 local function startGhostLoop()
@@ -1999,16 +2270,44 @@ local function ghostColor()
 end
 
 -- Opciones del fantasma elegidas en la app (menú de ajustes), guardadas en preferences.txt y leídas al
--- empezar cada carrera: ghost_enabled (on/off), ghost_transparency (low/medium/high), ghost_trail (on/off)
-local ghostSettings = {enabled = true, transparency = 'medium', trail = false}
+-- empezar cada carrera: ghost_enabled (on/off), ghost_transparency (low/medium/high), ghost_trail (on/off),
+-- ghost_flame (on/off; aún sin botón en la app, encendida por defecto mientras se prueba),
+-- ghost_trail_transparency (low/medium/high)
+local ghostSettings = {enabled = true, transparency = 'medium', trail = false, flame = true, trailTransparency = 'low'}
+-- Holograma más ligero de dibujar (el cristal es caro y se notaban tirones al verlo desde abajo):
+-- no se copian las piezas pequeñas de tu vehículo (radio menor que este, en cm), salvo las de los motores,
+-- y cada pieza usa un nivel de detalle más bajo (1 = el más detallado, 2 = el siguiente...; si la malla no
+-- tiene tantos, el juego usa el último que tenga)
+ghostSettings.HOLOGRAM_MIN_RADIUS_CM = 15
+ghostSettings.HOLOGRAM_FORCED_LOD = 2
 -- Transparencia: glass = Max, Min, Edge y Highlight Opacity del cristal; widget = opacidad del material de reserva
+-- (los primeros valores estaban demasiado juntos y no se notaba la diferencia: ahora van más separados)
+-- Material: el cristal del juego (con color). El translúcido sencillo del motor tiene opacidad de verdad, pero
+-- en el mundo 3D sale negro aunque se le ponga una textura blanca (probado el 2026-11-02): queda de reserva.
+-- Con el cristal, bajar la opacidad no deja ver a través, solo lo oscurece; por eso los niveles son suaves.
+-- glass: Max, Min, Edge y Highlight Opacity del cristal; body/boost: opacidad si se usa el material de reserva
+-- thin: Thin Translucent Multiplier del cristal: cuanto más alto, más deja ver lo de detrás (probado: con 1 se
+-- veía transparente y con 0,1 sólido)
+-- flameThin: el de la llama, más sólida que el cuerpo (si no, se mezclaba con el color del fantasma y se apagaba)
 ghostSettings.TRANSPARENCY_LEVELS = {
-    low = {glass = {0.75, 0.4, 1, 0.8}, widget = 0.65},
-    medium = {glass = {0.55, 0.25, 0.9, 0.6}, widget = 0.45},
-    high = {glass = {0.35, 0.15, 0.6, 0.4}, widget = 0.3},
+    -- Edge Opacity (tercer valor de glass) baja con la opacidad: casi fijo, el contorno de cada pieza se veía
+    -- como una línea negra al bajarla, como si se viera la malla
+    low = {glass = {0.75, 0.4, 0.8, 0.8}, thin = 0.1, flameThin = 0.05, body = 0.8, boost = 0.9},
+    medium = {glass = {0.55, 0.25, 0.5, 0.6}, thin = 0.5, flameThin = 0.15, body = 0.45, boost = 0.7},
+    high = {glass = {0.35, 0.15, 0.25, 0.4}, thin = 1, flameThin = 0.3, body = 0.12, boost = 0.5},
 }
+-- La estela tiene su propia transparencia en la app (ghost_trail_transparency), aparte de la del vehículo.
+-- low (la opción por defecto) es casi sólida: con {0,75; 0,4; 0,75; 0,8} y thin 0,1 se veía poco.
+-- opacity: la del material de reserva.
+ghostSettings.TRAIL_LEVELS = {
+    low = {glass = {0.95, 0.7, 0.9, 1}, thin = 0.03, opacity = 0.9},
+    medium = {glass = {0.55, 0.25, 0.5, 0.6}, thin = 0.5, opacity = 0.6},
+    high = {glass = {0.35, 0.15, 0.25, 0.4}, thin = 1, opacity = 0.35},
+}
+-- Cuánto se aclara el color del borde (Color Edge) mezclándolo con blanco: 0 = el mismo color, 1 = blanco
+ghostSettings.EDGE_LIGHTEN = 0.5
 function ghostSettings.read()
-    local enabled, transparency, trail = 'on', 'medium', 'off'   -- valores por defecto
+    local enabled, transparency, trail, flame, trailTransparency = 'on', 'medium', 'off', 'on', 'low'   -- valores por defecto
     local file = io.open(modFile('preferences.txt'), 'r')
     if file then
         for line in file:lines() do
@@ -2016,52 +2315,92 @@ function ghostSettings.read()
             if key == 'ghost_enabled' then enabled = value
             elseif key == 'ghost_transparency' then transparency = value
             elseif key == 'ghost_trail' then trail = value
+            elseif key == 'ghost_flame' then flame = value
+            elseif key == 'ghost_trail_transparency' then trailTransparency = value
             end
         end
         file:close()
     end
     ghostSettings.enabled = enabled ~= 'off'
     ghostSettings.trail = trail == 'on'
+    ghostSettings.flame = flame ~= 'off'
     ghostSettings.transparency = ghostSettings.TRANSPARENCY_LEVELS[transparency] and transparency or 'medium'
+    ghostSettings.trailTransparency = ghostSettings.TRAIL_LEVELS[trailTransparency] and trailTransparency or 'low'
 end
 
-hologramMaterial = function(world, colorOverride)
+-- use: 'body' (el holograma, por defecto), 'flame' (la llama) o 'trail' (la estela, siempre igual)
+-- options (opcional): glass = nombre del cristal que hay que usar; highlight = brillo (Highlight Color Multiplier)
+hologramMaterial = function(world, colorOverride, use, options)
+    options = options or {}
     local color, colorName = ghostColor()
-    if colorOverride then color, colorName = colorOverride, 'estela' end
+    if colorOverride then color, colorName = colorOverride, use or 'efecto' end
     local level = ghostSettings.TRANSPARENCY_LEVELS[ghostSettings.transparency]
-    color = {R = color.R, G = color.G, B = color.B, A = level.widget}
+    local glassOpacity, thin, opacity = level.glass, level.thin, level.body
+    if use == 'flame' then thin, opacity = level.flameThin, level.boost end
+    if use == 'trail' then
+        local trailLevel = ghostSettings.TRAIL_LEVELS[ghostSettings.trailTransparency]
+        glassOpacity, thin, opacity = trailLevel.glass, trailLevel.thin, trailLevel.opacity
+    end
     local materials = StaticFindObject('/Script/Engine.Default__KismetMaterialLibrary')
     -- 1) A glass material of the game with colour settings (tinted glass looks like a hologram)
     for _, entry in ipairs(ghostLook.candidates) do
         local hasColor = false
         for _, name in ipairs(entry.vectors) do if name:find('Color', 1, true) then hasColor = true end end
-        if hasColor and entry.name:find('Glass', 1, true) then
+        if hasColor and entry.name:find(options.glass or 'Glass', 1, true) then
             local dynamic
             pcall(function() dynamic = materials:CreateDynamicMaterialInstance(world, entry.material, FName('GhostHologram'), 0) end)
             if isValid(dynamic) then
-                for _, name in ipairs(entry.vectors) do pcall(function() dynamic:SetVectorParameterValue(FName(name), {R = color.R, G = color.G, B = color.B, A = 1}) end) end
-                local glass = level.glass
-                for _, pair in ipairs({{'Max Opacity', glass[1]}, {'Min Opacity', glass[2]}, {'Edge Opacity', glass[3]}, {'Highlight Opacity', glass[4]}}) do
+                -- El borde (Color Edge), con el color aclarado: con el mismo color se veía como una línea oscura
+                local lighten = ghostSettings.EDGE_LIGHTEN
+                local function lighter(value) return value < 1 and value + (1 - value) * lighten or value end
+                for _, name in ipairs(entry.vectors) do
+                    local tint = {R = color.R, G = color.G, B = color.B, A = 1}
+                    if name:find('Edge', 1, true) then tint = {R = lighter(color.R), G = lighter(color.G), B = lighter(color.B), A = 1} end
+                    pcall(function() dynamic:SetVectorParameterValue(FName(name), tint) end)
+                end
+                local glass = glassOpacity
+                -- La llama, sin borde: el contorno con la misma opacidad que el centro, para que el color se vea lleno
+                local edgeOpacity = use == 'flame' and glass[1] or glass[3]
+                local scalars = {{'Max Opacity', glass[1]}, {'Min Opacity', glass[2]}, {'Edge Opacity', edgeOpacity}, {'Highlight Opacity', glass[4]},
+                    {'Thin Translucent Multiplier', thin}}
+                -- La llama: más brillo sin cambiar el tono
+                if options.highlight then scalars[#scalars + 1] = {'Highlight Color Multiplier', options.highlight} end
+                for _, pair in ipairs(scalars) do
                     pcall(function() dynamic:SetScalarParameterValue(FName(pair[1]), pair[2]) end)
                 end
-                return dynamic, 'cristal ' .. (entry.name:match('([^%.:/ ]+)$') or '') .. ', color ' .. colorName
+                return dynamic, 'cristal ' .. (entry.name:match('([^%.:/ ]+)$') or '') .. ', color ' .. colorName .. ', transparencia ' .. ghostSettings.transparency
             end
         end
     end
-    -- 2) The engine's translucent widget material, tinted
+    -- Si se pidió un cristal concreto y no está, no se usa la reserva (para comparar cristales)
+    if options.glass then return nil, 'sin el cristal ' .. options.glass end
+    -- 2) Reserve: the engine's translucent widget material, with real opacity (it rendered black in the world)
     local candidate
     for _, entry in ipairs(ghostLook.candidates) do if entry.name:find('Widget3DPassThrough_Translucent', 1, true) then candidate = entry; break end end
-    if not candidate then return nil, 'sin material translúcido' end
-    local rendering = StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
-    local dynamic, plain
-    pcall(function() dynamic = materials:CreateDynamicMaterialInstance(world, candidate.material, FName('GhostHologram'), 0) end)
-    if not isValid(dynamic) then return nil, 'no se pudo crear el material' end
-    pcall(function() plain = rendering:CreateRenderTarget2D(world, 4, 4, 2, {R = 1, G = 1, B = 1, A = 1}, false) end)
-    if not isValid(plain) then pcall(function() plain = rendering:CreateRenderTarget2D(world, 4, 4, 2, {R = 1, G = 1, B = 1, A = 1}, false, false) end) end
-    if isValid(plain) then pcall(function() rendering:ClearRenderTarget2D(world, plain, {R = 1, G = 1, B = 1, A = 1}) end); pcall(function() dynamic:SetTextureParameterValue(FName('SlateUI'), plain) end) end
-    pcall(function() dynamic:SetScalarParameterValue(FName('OpacityFromTexture'), 0) end)
-    pcall(function() dynamic:SetVectorParameterValue(FName('TintColorAndOpacity'), color) end)
-    return dynamic, 'widget, color ' .. colorName
+    if candidate then
+        local rendering = StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
+        local dynamic, plain
+        pcall(function() dynamic = materials:CreateDynamicMaterialInstance(world, candidate.material, FName('GhostHologram'), 0) end)
+        if isValid(dynamic) then
+            -- El color se multiplica por la textura SlateUI: tiene que ser blanca. Primero la blanca del motor;
+            -- si no está, una pintada en el momento (esa salía negra y dejaba el fantasma y las llamas sin color).
+            local textureNote = 'textura blanca del motor'
+            plain = StaticFindObject('/Engine/EngineResources/WhiteSquareTexture.WhiteSquareTexture')
+            if not isValid(plain) and type(LoadAsset) == 'function' then pcall(function() plain = LoadAsset('/Engine/EngineResources/WhiteSquareTexture.WhiteSquareTexture') end) end
+            if not isValid(plain) then
+                textureNote = 'textura pintada'
+                pcall(function() plain = rendering:CreateRenderTarget2D(world, 4, 4, 2, {R = 1, G = 1, B = 1, A = 1}, false) end)
+                if not isValid(plain) then pcall(function() plain = rendering:CreateRenderTarget2D(world, 4, 4, 2, {R = 1, G = 1, B = 1, A = 1}, false, false) end) end
+                if isValid(plain) then pcall(function() rendering:ClearRenderTarget2D(world, plain, {R = 1, G = 1, B = 1, A = 1}) end) end
+            end
+            if isValid(plain) then pcall(function() dynamic:SetTextureParameterValue(FName('SlateUI'), plain) end) else textureNote = 'sin textura' end
+            pcall(function() dynamic:SetScalarParameterValue(FName('OpacityFromTexture'), 0) end)
+            pcall(function() dynamic:SetVectorParameterValue(FName('TintColorAndOpacity'), {R = color.R, G = color.G, B = color.B, A = opacity}) end)
+            return dynamic, string.format('translúcido, color %s, transparencia %s (opacidad %d %%, %s)', colorName, ghostSettings.transparency,
+                math.floor(opacity * 100 + 0.5), textureNote)
+        end
+    end
+    return nil, 'sin material translúcido'
 end
 -- UE4SS hands arrays back as TArray objects, not Lua tables
 local function toList(array)
@@ -2091,6 +2430,27 @@ local function attachedActors(pawn)
     end
     return list
 end
+-- (va aquí, después de attachedActors y toList, para poder usarlas)
+-- La llama de motor de tu vehículo que va pegada a una pieza (la que copió el holograma)
+function ghostFlame.findSourceFlame(pawn, enginePart)
+    local class = StaticFindObject('/Script/Niagara.NiagaraComponent')
+    if not isValid(class) then return nil end
+    local owners = {pawn}
+    for _, attached in ipairs(attachedActors(pawn)) do owners[#owners + 1] = attached end
+    local partAddress = address(enginePart)
+    for _, owner in ipairs(owners) do
+        local components = {}
+        pcall(function() components = toList(owner:K2_GetComponentsByClass(class)) end)
+        for _, component in ipairs(components) do
+            local parentAddress, assetName = nil, ''
+            pcall(function() parentAddress = address(component:GetAttachParent()) end)
+            pcall(function() assetName = fullName(readProperty(component, 'Asset')) end)
+            if parentAddress and parentAddress == partAddress and assetName:find(ghostFlame.ENGINE_EFFECT, 1, true) then return component end
+        end
+    end
+    return nil
+end
+
 -- What the vehicle is made of, for the log: component classes of the pawn and of the actors attached to it
 local function describeVehicle(pawn)
     local actors, lines, counts = {pawn}, {}, {}
@@ -2130,7 +2490,17 @@ local function spawnVehicleHologram(pawn, world)
     local base = world:SpawnActor(actorClass, {X = pawnLocation.X, Y = pawnLocation.Y, Z = pawnLocation.Z}, {Pitch = pawnRotation.Pitch, Yaw = pawnRotation.Yaw, Roll = pawnRotation.Roll})
     if not isValid(base) then return nil, 'no se pudo crear la base' end
     pcall(function() readProperty(base, 'StaticMeshComponent'):SetMobility(2) end)
-    local actors, parts = {base}, {static = 0, skeletal = 0}
+    local actors, parts, skippedSmall = {base}, {static = 0, skeletal = 0}, 0
+    local engineSocket = FName(ghostTrail.ENGINE_SOCKET)
+    -- Si una pieza es pequeña (y no es un motor: la llama y la estela salen de sus toberas)
+    local function isSmallPart(component, mesh, scale)
+        local radius
+        pcall(function() radius = mesh:GetBounds().SphereRadius * math.max(math.abs(scale.X), math.abs(scale.Y), math.abs(scale.Z)) end)
+        if not radius or radius >= ghostSettings.HOLOGRAM_MIN_RADIUS_CM then return false end
+        local isEngine = false
+        pcall(function() isEngine = component:DoesSocketExist(engineSocket) end)
+        return not isEngine
+    end
     for _, pair in ipairs(meshClasses) do
         local componentClass, kind = pair[1], pair[2]
         local components = {}
@@ -2149,19 +2519,26 @@ local function spawnVehicleHologram(pawn, world)
             pcall(function() meshName = mesh:GetFullName() end)
             -- the proxy box around the vehicle (an engine cube) is not part of its look
             local isProxy = componentName:find('Proxy', 1, true) or meshName:find('/Engine/', 1, true)
+            local location, rotation, scale
             if visibleOk and visible and isValid(mesh) and not isProxy then
-                local location, rotation, scale = component:K2_GetComponentLocation(), component:K2_GetComponentRotation(), component:K2_GetComponentScale()
+                location, rotation, scale = component:K2_GetComponentLocation(), component:K2_GetComponentRotation(), component:K2_GetComponentScale()
+                if kind == 'static' and isSmallPart(component, mesh, scale) then skippedSmall = skippedSmall + 1; location = nil end
+            end
+            if location then
                 local copy = world:SpawnActor(kind == 'static' and actorClass or skeletalClass, {X = location.X, Y = location.Y, Z = location.Z},
                     {Pitch = rotation.Pitch, Yaw = rotation.Yaw, Roll = rotation.Roll})
                 if isValid(copy) then
                     local copyComponent = readProperty(copy, kind == 'static' and 'StaticMeshComponent' or 'SkeletalMeshComponent')
                     pcall(function() copyComponent:SetMobility(2) end)
-                    if kind == 'static' then pcall(function() copyComponent:SetStaticMesh(mesh) end)
+                    if kind == 'static' then
+                        pcall(function() copyComponent:SetStaticMesh(mesh) end)
+                        pcall(function() copyComponent:SetForcedLodModel(ghostSettings.HOLOGRAM_FORCED_LOD) end)
                     else
                         local setOk = pcall(function() copyComponent:SetSkeletalMeshAsset(mesh) end)
                         if not setOk then pcall(function() copyComponent:SetSkeletalMesh(mesh, true) end) end
                     end
                     pcall(function() copyComponent:SetCollisionEnabled(0) end)
+                    ghostTrail.lightRendering(copyComponent)
                     pcall(function() copy:SetActorScale3D({X = scale.X, Y = scale.Y, Z = scale.Z}) end)
                     local slots = 1
                     pcall(function() slots = copyComponent:GetNumMaterials() end)
@@ -2176,7 +2553,8 @@ local function spawnVehicleHologram(pawn, world)
     end
     if #actors == 1 then pcall(function() base:K2_DestroyActor() end); local described = 'sin descripción'; pcall(function() described = describeVehicle(pawn) end); return nil, 'el vehículo no tiene modelos visibles; ' .. described end
     pcall(describeVehicle, pawn)   -- race_ghosts\\vehicle.txt, to see which pieces exist
-    return base, actors, string.format('holograma de tu vehículo (%d piezas, %d con esqueleto; material %s)', parts.static + parts.skeletal, parts.skeletal, tostring(materialNote))
+    return base, actors, string.format('holograma de tu vehículo (%d piezas, %d con esqueleto, %d pequeñas sin copiar, detalle %d; material %s)', parts.static + parts.skeletal,
+        parts.skeletal, skippedSmall, ghostSettings.HOLOGRAM_FORCED_LOD, tostring(materialNote))
 end
 -- Friends' files and ghosts saved before carry no rotation: it follows the direction of travel.
 local function fillGhostRotations(points)
@@ -2210,11 +2588,13 @@ local function startRaceGhost(race, pawn)
     end
     -- The recorded height follows the hover bobbing of the vehicle (tens of cm every 0.1 s), which made
     -- the sphere shake: it is smoothed with a moving average of ±0.4 s.
+    -- Con giro grabado (holograma) basta con ±0,1 s: con ±0,4 s se hundía en las crestas y se quedaba corto en los saltos
     local points, heights = ghost.points, {}
+    local smoothing = points[1].yaw and 1 or 4   -- puntos a cada lado (cada punto son 0,1 s)
     if not needsHeights then
         for index = 1, #points do
             local sum, count = 0, 0
-            for other = math.max(1, index - 4), math.min(#points, index + 4) do sum = sum + points[other].z; count = count + 1 end
+            for other = math.max(1, index - smoothing), math.min(#points, index + smoothing) do sum = sum + points[other].z; count = count + 1 end
             heights[index] = sum / count
         end
         for index = 1, #points do points[index].z = heights[index] end
@@ -2283,6 +2663,11 @@ local function placePendingGhost(race, pawn)
         log('Fantasma: ' .. tostring(trailNote))
     elseif not ghostSettings.trail then
         log('Fantasma: estela apagada en la app')
+    end
+    -- La llama del juego en los motores del holograma (prueba), con su propio nombre en el modo seguro
+    if ghostSettings.flame and race.ghost and race.ghost.parts and not safeMode.blocked.ghost_flame then
+        local _, flameNote = runGuarded('ghost_flame', ghostFlame.spawn, race.ghost, pawn)
+        log('Fantasma: ' .. tostring(flameNote))
     end
     log('Fantasma: ' .. pending.label .. (problem and (' (' .. problem .. ')') or ''))
     startGhostLoop()
@@ -2364,7 +2749,7 @@ end
 -- apuntan en logs\effects.txt los efectos de partículas de tu vehículo (tipo, efecto, pieza y posición), y
 -- durante la carrera, cada 0,25 s, cuándo se encienden o se apagan, con el boost de ese momento.
 -- Solo lee (nombres y si están encendidos), no crea nada. Si el juego se cierra, se desactiva solo.
-local effectsScan = {ENABLED = true, LIMIT = 5000, CLASSES = {'/Script/Niagara.NiagaraComponent', '/Script/Engine.ParticleSystemComponent'}}
+local effectsScan = {ENABLED = false, LIMIT = 5000, CLASSES = {'/Script/Niagara.NiagaraComponent', '/Script/Engine.ParticleSystemComponent'}}
 
 -- Lo último de una ruta de objeto (Pieza_C_123 en vez de toda la ruta)
 function effectsScan.shortName(object)
@@ -2454,70 +2839,47 @@ function effectsScan.sample(race, now, boost)
     if #scan.lines >= 10 then scan.flush() end
 end
 
--- Segunda parte: qué valores le pasa tu vehículo a la llama de cada motor (NS_RaceEngine). Se escucha a las
--- funciones con las que se cambia un valor de un efecto y se apunta el nombre, el valor y el boost, solo
--- de los efectos de motor y solo cuando el valor cambia (como mucho uno cada 0,25 s por valor).
 effectsScan.ENGINE_EFFECT = 'NS_RaceEngine'
-effectsScan.SETTERS = {'SetVariableFloat', 'SetVariableInt', 'SetVariableBool', 'SetVariableVec2', 'SetVariableVec3', 'SetVariableVec4',
-    'SetVariableLinearColor', 'SetVariableQuat', 'SetNiagaraVariableFloat', 'SetNiagaraVariableInt', 'SetNiagaraVariableBool',
-    'SetNiagaraVariableVec2', 'SetNiagaraVariableVec3', 'SetNiagaraVariableVec4', 'SetNiagaraVariableLinearColor', 'SetNiagaraVariableQuat',
-    'SetFloatParameter', 'SetIntParameter', 'SetBoolParameter', 'SetVectorParameter', 'SetColorParameter'}
-effectsScan.hookedSetters = nil   -- se enganchan una sola vez por sesión
 
--- Un valor como texto: número, sí/no, o sus componentes (X, Y, Z, W o R, G, B, A)
-function effectsScan.valueText(value)
-    if type(value) == 'number' then return string.format('%.3f', value) end
-    if type(value) == 'boolean' then return tostring(value) end
-    local parts = {}
-    for _, field in ipairs({'X', 'Y', 'Z', 'W', 'R', 'G', 'B', 'A'}) do
-        local ok, part = pcall(function() return value[field] end)
-        if ok and type(part) == 'number' then parts[#parts + 1] = string.format('%.2f', part) end
-    end
-    if #parts > 0 then return table.concat(parts, ',') end
-    return scalarToText(value)
-end
-
--- Lo que hace cada vez que el juego le cambia un valor a un efecto
-function effectsScan.onSetter(setter, context, nameParam, valueParam)
-    local race = modState.race
-    local scan = race and race.effectsScan
-    if not scan or not scan.engines or scan.count >= effectsScan.LIMIT then return end
-    local component = context:get()
-    local index = scan.engines[address(component) or '']
-    if not index then return end
-    local name = '?'
-    pcall(function() name = nameParam:get():ToString() end)
-    local text = '?'
-    pcall(function() text = effectsScan.valueText(valueParam:get()) end)
-    local key = index .. '|' .. name
-    local now = race.clock() or 0
-    local last = scan.engineValues[key]
-    if last and (last.text == text or now < last.at + 0.25) then return end
-    scan.engineValues[key] = {text = text, at = now}
-    local elapsed = now - (race.eventZero or race.startTime or now)
-    scan.lines[#scan.lines + 1] = string.format('%.2f\t%d\t%s\tmotor %d\t%s %s = %s%s', elapsed, race.lapNumber + 1, scan.boost or '', index,
-        setter, name, text, last and '' or '   (nuevo)')
-    scan.count = scan.count + 1
-    if #scan.lines >= 10 then scan.flush() end
-end
-
--- Engancha las funciones que existan; devuelve cuáles
-function effectsScan.hookSetters()
-    if effectsScan.hookedSetters then return effectsScan.hookedSetters end
-    effectsScan.hookedSetters = {}
-    if type(RegisterHook) ~= 'function' then return effectsScan.hookedSetters end
-    for _, setter in ipairs(effectsScan.SETTERS) do
-        local ok = pcall(function()
-            RegisterHook('/Script/Niagara.NiagaraComponent:' .. setter, function(context, nameParam, valueParam)
-                pcall(effectsScan.onSetter, setter, context, nameParam, valueParam)
+-- Nombres y tipos de las propiedades de un objeto (su clase y las de las que hereda)
+function effectsScan.propertyList(object)
+    local names = {}
+    pcall(function()
+        local class = object:GetClass()
+        for _ = 1, 8 do
+            if not isValid(class) then break end
+            class:ForEachProperty(function(property)
+                local name = '?'
+                pcall(function() name = property:GetFName():ToString() end)
+                names[#names + 1] = name .. ':' .. tostring(propertyTypeName(property))
             end)
-        end)
-        if ok then effectsScan.hookedSetters[#effectsScan.hookedSetters + 1] = setter end
-    end
-    return effectsScan.hookedSetters
+            class = class:GetSuperStruct()
+        end
+    end)
+    return names
 end
 
--- Al empezar la carrera: qué efectos son de motor, y engancharse
+-- Apunta en effects.txt las propiedades del efecto de motor y los nombres de sus valores ajustables (de usuario)
+function effectsScan.describeEngineSystem(scan, system)
+    if not isValid(system) then scan.lines[#scan.lines + 1] = '(efecto de motor: no se pudo leer)'; return end
+    scan.lines[#scan.lines + 1] = '(efecto de motor ' .. fullName(system) .. ': propiedades ' .. table.concat(effectsScan.propertyList(system), ', ') .. ')'
+    local exposed = readProperty(system, 'ExposedParameters')
+    if not exposed then scan.lines[#scan.lines + 1] = '(sin ExposedParameters)'; return end
+    for _, field in ipairs({'SortedParameterOffsets', 'Parameters', 'UserParameterRedirects'}) do
+        local names = {}
+        pcall(function()
+            for _, element in ipairs(toList(exposed[field])) do
+                local name = '?'
+                pcall(function() name = element.Name:ToString() end)
+                if name == '?' then pcall(function() name = element.Variable.Name:ToString() end) end
+                names[#names + 1] = name
+            end
+        end)
+        scan.lines[#scan.lines + 1] = string.format('(valores ajustables, %s: %s)', field, #names > 0 and table.concat(names, ', ') or 'nada')
+    end
+end
+
+-- Al empezar la carrera: qué efectos son de motor
 function effectsScan.startEngineWatch(race)
     local scan = race.effectsScan
     scan.engines, scan.engineValues = {}, {}
@@ -2528,10 +2890,13 @@ function effectsScan.startEngineWatch(race)
         local key = address(entry.component)
         if key and assetName:find(effectsScan.ENGINE_EFFECT, 1, true) then scan.engines[key] = index; engineCount = engineCount + 1 end
     end
-    local hooked = effectsScan.hookSetters()
-    scan.lines[#scan.lines + 1] = string.format('(valores de los motores: %d efectos de motor; funciones escuchadas: %s)', engineCount,
-        #hooked > 0 and table.concat(hooked, ', ') or 'ninguna')
-    log(string.format('Diagnóstico de efectos: escuchando los valores de %d motores (%d funciones)', engineCount, #hooked))
+    -- Los valores ajustables del efecto de motor (para la llama del fantasma)
+    local firstEngine
+    for _, entry in ipairs(scan.entries) do
+        if scan.engines[address(entry.component) or ''] then firstEngine = entry.component; break end
+    end
+    if firstEngine then pcall(effectsScan.describeEngineSystem, scan, readProperty(firstEngine, 'Asset')) end
+    scan.lines[#scan.lines + 1] = string.format('(%d efectos de motor)', engineCount)
 end
 
 local function recordSample(race, playerController)
@@ -2604,12 +2969,6 @@ local function recordSample(race, playerController)
                     local watchOk, watchError = runGuarded('effects_scan', effectsScan.startEngineWatch, race)
                     if not watchOk then log('Diagnóstico de efectos (valores) fallido: ' .. tostring(watchError)) end
                 end
-            end
-            -- While the state diagnostics are off, the race counts as the delicate part of the ghost trail:
-            -- if the game closes during it, the next session goes without trail
-            if not race.stateWatch and race.ghost and race.ghost.trail and not modState.longGuard then
-                modState.longGuard = 'ghost_trail'
-                if #guardedOperationStack == 0 then writeFile(OPERATION_IN_PROGRESS_PATH, 'ghost_trail\n', 'w') end
             end
             -- The hologram was copied during the intro, when the vehicle may be posed differently (a bike on a
             -- slope ended up upright the whole race): its pieces are put again as your vehicle is at the GO

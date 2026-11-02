@@ -15,7 +15,7 @@ const KNOWN_GLOBALS = new Set(['print', 'io', 'os', 'math', 'string', 'table', '
 // Fields that come from Lua, UE4SS or the game (read but never written by the mod)
 const EXTERNAL_FIELDS = new Set(['X', 'Y', 'Z', 'R', 'G', 'B', 'A', 'Pawn', 'K', 'CONTROL', 'SHIFT', 'Font', 'Size', 'SpecifiedColor', 'n',
   'source', 'traceback', 'clock', 'date', 'time', 'execute', 'remove', 'rename', 'open', 'lines', 'floor', 'max', 'min', 'abs', 'sqrt', 'deg',
-  'rad', 'cos', 'sin', 'atan', 'huge', 'format', 'concat', 'sort', 'insert', 'pack', 'unpack', 'getinfo', 'match', 'gsub', 'gmatch', 'find', 'lower', 'sub', 'stop']);
+  'rad', 'cos', 'sin', 'atan', 'char', 'huge', 'format', 'concat', 'sort', 'insert', 'pack', 'unpack', 'getinfo', 'match', 'gsub', 'gmatch', 'find', 'lower', 'sub', 'stop']);
 
 let problems = 0;
 // Fields are checked across all the files together (the panel's fields are used by main.lua)

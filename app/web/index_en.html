@@ -602,6 +602,7 @@ html.no-animations *, html.no-animations *::before, html.no-animations *::after 
         <div class="group"><span>In-track ghost</span><div class="options" data-preference="ghost_enabled"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
         <div class="group"><span>Ghost transparency</span><div class="options" data-preference="ghost_transparency"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button></div></div>
         <div class="group"><span>Ghost trail</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
+        <div class="group"><span>Trail transparency</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button></div></div>
         <div class="group"><span>Animations</span><div class="options" data-preference="animations"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>
         <div class="group"><span>Language</span><div class="options" data-preference="language"><button type="button" data-value="es">Español</button><button type="button" data-value="en">English</button><button type="button" data-value="aurebesh" class="aurebesh-option">Aurebesh</button></div>
           <span class="aurebesh-missing" id="aurebeshMissing">Aurebesh needs the SF Distant Galaxy Symbols font (ShyFonts, free for personal use). It is not included in the app because of its licence: install it in Windows or put it in the «fonts» folder and reopen the app.</span></div>
@@ -898,7 +899,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   const postJson = (path, value) => fetchFromApp(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
 
   // ---------- Event names ----------
-  const PLANET_NAMES = { DAL: 'Lantaana', MAS: 'Jakku', COR: 'Ando Prime' };
+  // Nombres visibles de los planetas (sacados de game_records: el juego guarda el nombre de cada uno)
+  const PLANET_NAMES = { DAL: 'Lantaana', MAS: 'Jakku', COR: 'Ando Prime', BGL: 'Tatooine', SPA: 'Crait', WHP: 'Derven Acos', HSK: 'Sentinel I' };
   // The game's vehicles: podracers (PLANE in the code) and three speeders: car, bike and skimmer
   const MIXED_CASE_CODE_WORDS = { Plane: 'Podracer' };
   const CODE_WORDS = { TT: 'Time Trial', BIKE: 'Bike', POD: 'Podracer', PODRACER: 'Podracer', LAND: 'Car', LANDSPEEDER: 'Car', SKIM: 'Skimmer',
@@ -2736,7 +2738,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   // Settings (⚙ menu): theme, hologram, animations and language; saved in preferences.txt
   const THEME_NAMES = { sith: 'Sith', jedi: 'Jedi', imperial: 'Imperial', galactic: 'Galactic Racer' };
   const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
-    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off' };   // ghost_*: el mod las lee al empezar la siguiente carrera
+    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low' };   // ghost_*: el mod las lee al empezar la siguiente carrera
   // Simple mode shows the essentials; Tryhard (the default) the whole analysis
   const isSimpleMode = () => preference('mode') === 'simple';
   const preference = key => ((state.data && state.data.preferences) || {})[key] || PREFERENCE_DEFAULTS[key];

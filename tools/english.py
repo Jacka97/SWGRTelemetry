@@ -36,6 +36,7 @@ for spanish, english in MANUAL:
     s = s.replace(spanish, english)
 # 2) Literals between single quotes: 'español' -> 'english'
 LIT = {
+ 'Centinela 1': 'Sentinel I',
  'Vaina': 'Podracer', 'Contrarreloj': 'Time Trial', 'Moto': 'Bike', 'Coche': 'Car', 'Rasante': 'Skimmer',
  'punto a punto': 'point to point', 'Carrera por equipos': 'Team Race', 'corto': 'short', 'largo': 'long', 'inverso': 'reverse', 'circuito': 'circuit',
  ' (evento sin identificar)': ' (unidentified event)',
@@ -415,6 +416,8 @@ HTML = [
   '<div class="group"><span>Ghost transparency</span><div class="options" data-preference="ghost_transparency"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button>'),
  ('<div class="group"><span>Estela del fantasma</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button>',
   '<div class="group"><span>Ghost trail</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button>'),
+ ('<div class="group"><span>Transparencia de la estela</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button>',
+  '<div class="group"><span>Trail transparency</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Low</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="high">High</button>'),
  ('<div class="group"><span>Efecto holograma</span><div class="options" data-preference="hologram"><button type="button" data-value="off">No</button><button type="button" data-value="soft">Suave</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Fuerte</button>',
   '<div class="group"><span>Hologram effect</span><div class="options" data-preference="hologram"><button type="button" data-value="off">Off</button><button type="button" data-value="soft">Soft</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Strong</button>'),
  ('<div class="group"><span>Animaciones</span><div class="options" data-preference="animations"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button>',
