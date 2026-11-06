@@ -10,11 +10,11 @@ const luaparse = require('luaparse');
 const KNOWN_GLOBALS = new Set(['print', 'io', 'os', 'math', 'string', 'table', 'pcall', 'xpcall', 'tostring', 'tonumber', 'type',
   'ipairs', 'pairs', 'select', 'error', 'assert', 'dofile', 'debug', '_G', 'next', 'setmetatable', 'getmetatable', 'rawget', 'rawset',
   // UE4SS
-  'StaticFindObject', 'FindAllOf', 'FName', 'FText', 'StaticConstructObject', 'LoopInGameThreadWithDelay', 'LoopInGameThreadAfterFrames', 'RegisterKeyBind', 'RegisterHook', 'Key',
+  'StaticFindObject', 'FindAllOf', 'FName', 'FText', 'StaticConstructObject', 'LoopInGameThreadWithDelay', 'LoopInGameThreadAfterFrames', 'RegisterKeyBind', 'RegisterHook', 'collectgarbage', 'Key',
   'ModifierKey', 'ExecuteInGameThread', 'ForEachUObject', 'LoadAsset']);
 // Fields that come from Lua, UE4SS or the game (read but never written by the mod)
 const EXTERNAL_FIELDS = new Set(['X', 'Y', 'Z', 'R', 'G', 'B', 'A', 'Pawn', 'K', 'CONTROL', 'SHIFT', 'Font', 'Size', 'SpecifiedColor', 'n',
-  'source', 'traceback', 'clock', 'date', 'time', 'execute', 'remove', 'rename', 'open', 'lines', 'floor', 'max', 'min', 'abs', 'sqrt', 'deg',
+  'source', 'traceback', 'getregistry', 'getmetatable', 'getupvalue', 'getuservalue', 'clock', 'date', 'time', 'execute', 'remove', 'rename', 'open', 'lines', 'floor', 'max', 'min', 'abs', 'sqrt', 'deg',
   'rad', 'cos', 'sin', 'atan', 'char', 'huge', 'format', 'concat', 'sort', 'insert', 'pack', 'unpack', 'getinfo', 'match', 'gsub', 'gmatch', 'find', 'lower', 'sub', 'stop']);
 
 let problems = 0;

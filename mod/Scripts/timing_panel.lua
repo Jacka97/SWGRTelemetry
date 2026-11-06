@@ -33,9 +33,25 @@ STYLES.compact.fontSizes = {titleLabel = 11, titleValue = 14, label = 10, value 
 STYLES.compact.isCompact = true
 
 local function toLinearColor(channels) return {R = channels[1], G = channels[2], B = channels[3], A = 1} end
+-- Colores elegidos en la app (timing_panel.ini, color_*): #RRGGBB como en la pantalla; el panel usa color lineal
+local COLOR_SETTINGS = {background = 'color_background', topBar = 'color_top_bar', title = 'color_title', label = 'color_label',
+    text = 'color_text', dim = 'color_dim', best = 'color_best', better = 'color_better', worse = 'color_worse', gain = 'color_gain', loss = 'color_loss'}
+local function colorFromHex(text)
+    local red, green, blue = tostring(text or ''):match('^#?(%x%x)(%x%x)(%x%x)$')
+    if not red then return nil end
+    local function linear(hex) return (tonumber(hex, 16) / 255) ^ 2.2 end
+    return {linear(red), linear(green), linear(blue)}
+end
 TimingPanel.COLORS = {}
-local function useStyle(styleName)
-    local style = STYLES[styleName] or STYLES.compact
+-- La paleta del estilo, con los colores de la app encima (color_top_bar = none quita la barra de arriba)
+local function useStyle(styleName, settings)
+    local base = STYLES[styleName] or STYLES.compact
+    local style = {}
+    for key, value in pairs(base) do style[key] = value end
+    for key, value in pairs(settings and settings.colors or {}) do
+        if key == 'topBar' and value == 'none' then style.topBar = nil
+        else style[key] = colorFromHex(value) or style[key] end
+    end
     for _, key in ipairs({'title', 'label', 'text', 'dim', 'best', 'better', 'worse', 'gain', 'loss'}) do TimingPanel.COLORS[key] = toLinearColor(style[key]) end
     return style
 end
@@ -54,6 +70,10 @@ local SETTINGS = {
     {file = 'live_difference', key = 'showLiveDifference', default = true}, {file = 'sector_bars', key = 'showSectorBars', default = true},
     {file = 'speeds', key = 'showSpeeds', default = true}, {file = 'forecast', key = 'showForecast', default = true},
 }
+-- los colores, al final del archivo y en este orden
+for _, key in ipairs({'background', 'topBar', 'title', 'label', 'text', 'dim', 'best', 'better', 'worse', 'gain', 'loss'}) do
+    SETTINGS[#SETTINGS + 1] = {file = COLOR_SETTINGS[key], key = COLOR_SETTINGS[key], default = ''}
+end
 -- hud.ini from version 0.9.17 and earlier: Spanish keys and values
 local OLD_FILE_KEYS = {ultima = 'last_lap', mejor = 'best_lap', ideal = 'ideal_lap', total = 'event_total', objetivo = 'target',
     anteriores = 'previous_sectors', comparar = 'compare_with', directo = 'live_difference', barras = 'sector_bars'}
@@ -74,6 +94,7 @@ local function writeSettingsFile(path, values)
     file:write('; previous_sectors: sectores aún sin correr con el tiempo de la vuelta anterior en gris (true/false)\n')
     file:write('; compare_with: diferencia de cada sector frente a tu mejor sector (best) o a la vuelta anterior (previous)\n')
     file:write('; live_difference: diferencia en directo frente a tu mejor vuelta (true/false) · sector_bars: fila de barras de sector\n')
+    file:write('; color_*: colores del panel en #RRGGBB (vacío = los del estilo; color_top_bar=none quita la barra de arriba)\n')
     local NUMBER_FORMATS = {x = '%.3f', y = '%.3f', scale = '%.2f', opacity = '%.2f'}
     for _, setting in ipairs(SETTINGS) do
         local value = values[setting.file]
@@ -111,7 +132,7 @@ function TimingPanel.loadSettings(path, oldPath)
             values = readSettingsFile(path)
         end
     end
-    if not values then writeSettingsFile(path, {}); settings.styleTable = useStyle(settings.style); return settings end
+    if not values then writeSettingsFile(path, {}); settings.styleTable = useStyle(settings.style, settings); return settings end
     -- A file from the versions before the panel styles (no "style", never edited by hand): the new panel's defaults
     if not values.style then
         writeSettingsFile(path, {})
@@ -133,7 +154,12 @@ function TimingPanel.loadSettings(path, oldPath)
     if settings.compareWith ~= 'previous' then settings.compareWith = 'best' end
     settings.x = math.max(0, math.min(1, settings.x)); settings.y = math.max(0, math.min(1, settings.y))
     settings.scale = math.max(0.5, math.min(3, settings.scale)); settings.opacity = math.max(0, math.min(1, settings.opacity))
-    settings.styleTable = useStyle(settings.style)
+    settings.colors = {}
+    for key, fileKey in pairs(COLOR_SETTINGS) do
+        local value = settings[fileKey]
+        if value and value ~= '' then settings.colors[key] = value end
+    end
+    settings.styleTable = useStyle(settings.style, settings)
     return settings
 end
 

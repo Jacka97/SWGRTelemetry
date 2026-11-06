@@ -4,8 +4,7 @@
 -- for laps and records.
 -- It never writes to game objects and never hooks game functions: it only reads.
 -- Data sources taken from N0M4D's MiniMap and LapRecord.
--- Shortcuts: Ctrl+F9 pauses/resumes recording · Ctrl+F10 shows/hides the timing panel ·
--- Ctrl+Shift+K searches the game for where it keeps your records (writes record_search.txt).
+-- Shortcuts: Ctrl+F9 pauses/resumes recording · Ctrl+F10 shows/hides the timing panel.
 
 local VERSION = '0.9.31'   -- always the same as the app's
 local VIRTUAL_SECTOR_LENGTH_CM = 250000   -- length of the virtual sectors of point-to-point stages
@@ -17,7 +16,7 @@ local function plainFileExists(path) local file = io.open(path, 'r'); if file th
 local FILE_FOLDERS = {
     config = {'preferences.txt', 'timing_panel.ini', 'hud.ini'},
     data = {'best_times.txt', 'learned_tracks.txt', 'ghosts.txt', 'event_records.txt', 'game_records.txt', 'rivals.txt'},
-    logs = {'log.txt', 'diagnostics.txt', 'safe_mode.txt', 'operation_in_progress.txt', 'record_search.txt', 'record_search_progress.txt', 'state_samples.txt', 'effects.txt'},
+    logs = {'log.txt', 'safe_mode.txt', 'operation_in_progress.txt', 'record_search.txt', 'record_search_progress.txt'},
 }
 local FOLDER_OF = {}
 for folderName, names in pairs(FILE_FOLDERS) do
@@ -33,12 +32,9 @@ for folderName, names in pairs(FILE_FOLDERS) do
 end
 local function modFile(name) return (FOLDER_OF[name] or MOD_FOLDER) .. name end
 local SAMPLE_INTERVAL_MS = 20
--- Ghost (0.9.29): the in-race ghost; its trail is paused (two crashes around the ramjet) and the vehicle
--- state diagnostics read only the vehicle state (logs\state_samples.txt)
 -- Estela rehecha y más segura: el código está listo, pero cada jugador la activa en la app (ghost_trail,
--- apagada por defecto). El diagnóstico de estados se apaga: sus datos ya van en el CSV, y así, si el juego
--- se cierra con la estela puesta, el modo seguro sabe que fue ella.
-local GHOST_ENABLED, TRAIL_ENABLED, STATE_WATCH_ENABLED = true, true, false
+-- apagada por defecto). Así, si el juego se cierra con la estela puesta, el modo seguro sabe que fue ella.
+local GHOST_ENABLED, TRAIL_ENABLED = true, true
 local ROUTE_SAMPLE_COUNT = 1024        -- route points used to compute progress along the route
 local ROUTE_SAMPLES_PER_TICK = 64      -- the route is sampled a little each tick to avoid stutters
 local LOST_DISTANCE_SQUARED = 15000 * 15000   -- further than 150 m from the nearby route: search the whole route
@@ -51,11 +47,28 @@ local AUTOPILOT_RATIO = 0.6            -- after the finish, dropping below 60 % 
 -- Own log (log.txt): every message is written straight away, so we know what the mod was doing
 -- even if the game closes abruptly and UE4SS never gets to save its own log.
 local LOG_PATH, loggedLineCount = modFile('log.txt'), 0
+-- Bonificación de tiempo (Precisión: cada punto que pasas resta tiempo al total). El juego la da acumulada
+-- (CurrentBonusTime); se guarda cada cambio con su hora para descontarla de vueltas, sectores y DIF.
+local bonusData = {}
+-- Bonificación acumulada hasta el momento t (0 si el evento no tiene)
+function bonusData.at(race, t)
+    local total = 0
+    for _, change in ipairs(race.bonusChanges or {}) do
+        if change.time <= t + 1e-6 then total = change.total else break end
+    end
+    return total
+end
+-- Bonificación ganada entre dos momentos
+function bonusData.between(race, from, to)
+    if not race.usesBonus then return 0 end
+    return bonusData.at(race, to) - bonusData.at(race, from)
+end
+
 local function log(message)
     local line = '[SWGRTelemetry] ' .. tostring(message)
     print(line .. '\n')
     loggedLineCount = loggedLineCount + 1
-    if loggedLineCount > 3000 then return end
+    if loggedLineCount > 6000 then return end   -- tope por sesión de juego
     local file = io.open(LOG_PATH, loggedLineCount == 1 and 'w' or 'a')
     if file then file:write(os.date('%H:%M:%S '), line, '\n'); file:close() end
 end
@@ -501,8 +514,8 @@ local KEYS = {f9 = {KeyName = FName('F9')}, f10 = {KeyName = FName('F10')}, f11 
 ---------------------------------------------------------------------------
 local SAFE_MODE_PATH, OPERATION_IN_PROGRESS_PATH = modFile('safe_mode.txt'), modFile('operation_in_progress.txt')
 local SAFE_MODE_OPERATION_NAMES = {timing_panel = 'el panel de tiempos', game_records = 'leer tus récords del juego',
-    record_search = 'la búsqueda de récords (Ctrl+Shift+K)', race_hook = 'engancharse a la carrera', recording = 'la grabación',
-    event_names = 'leer los nombres de evento del juego', race_ghost = 'el fantasma en pista', ghost_look = 'el aspecto del fantasma', ghost_vehicle = 'copiar tu vehículo para el fantasma', state_watch = 'el diagnóstico de estados del vehículo', ghost_trail = 'la estela del fantasma', effects_scan = 'el diagnóstico de efectos del vehículo', ghost_flame = 'la llama del fantasma'}
+    record_search = 'la búsqueda de récords', race_hook = 'engancharse a la carrera', recording = 'la grabación',
+    event_names = 'leer los nombres de evento del juego', race_ghost = 'el fantasma en pista', ghost_look = 'el aspecto del fantasma', ghost_vehicle = 'copiar tu vehículo para el fantasma', ghost_trail = 'la estela del fantasma', ghost_flame = 'la llama del fantasma', ghost_game_flame = 'la llama del juego en el fantasma'}
 -- Operation names written by older versions (in operation_in_progress.txt, then en_curso.txt)
 local OLD_OPERATION_NAMES = {panel = 'timing_panel', records = 'game_records', busqueda = 'record_search', carrera = 'race_hook',
     grabacion = 'recording', nombres = 'event_names'}
@@ -560,7 +573,6 @@ local function runGuarded(operation, action, ...)
     guardedOperationStack[#guardedOperationStack] = nil
     -- if this ran inside another delicate part, the note goes back to that part
     if #guardedOperationStack > 0 then writeFile(OPERATION_IN_PROGRESS_PATH, guardedOperationStack[#guardedOperationStack] .. '\n', 'w')
-    elseif modState.longGuard then writeFile(OPERATION_IN_PROGRESS_PATH, modState.longGuard .. '\n', 'w')
     else os.remove(OPERATION_IN_PROGRESS_PATH) end
     return table.unpack(results, 1, results.n)
 end
@@ -684,14 +696,14 @@ end
 local OFFICIAL_TIME_WAIT_SECONDS = 0.3    -- wait after the official time to see the checkpoint crossing
 local OFFICIAL_TIME_MATCH_SECONDS = 1.0   -- largest time gap between the official time and a crossing
 
-local checkEventEnd, writeDiagnostics, updateEventRecord
+local checkEventEnd, updateEventRecord
 
 -- Ghost of the best lap (ghosts.txt): distance covered in the lap (cm) and the time at that point,
 -- every ~10 m. Used for the live difference on the timing panel.
 local GHOSTS_PATH = modFile('ghosts.txt')
 local ghosts = {}
 local ghostsHaveOldKeys = false
-do
+local function loadGhosts()
     local file = io.open(GHOSTS_PATH, 'r')
     if file then
         for line in file:lines() do
@@ -710,6 +722,7 @@ do
         file:close()
     end
 end
+loadGhosts()
 local function saveGhosts()
     local keys = {}
     for key in pairs(ghosts) do keys[#keys + 1] = key end
@@ -746,249 +759,41 @@ local function storeGhost(race, key, lapStart, lapEnd, lapTime, origin)
     local lastDistance = 0
     for _, point in ipairs(race.distanceTrace or {}) do
         if point.time > lapStart and point.time < lapEnd and point.distance > lastDistance + 1000 then
-            ghost.distances[#ghost.distances + 1] = point.distance; ghost.times[#ghost.times + 1] = point.time - origin
+            ghost.distances[#ghost.distances + 1] = point.distance
+            ghost.times[#ghost.times + 1] = point.time - origin - bonusData.between(race, origin, point.time)
             lastDistance = point.distance
         end
     end
     if #ghost.distances < 10 then return end
     ghosts[key] = ghost
-    saveGhosts()
+    race.ghostsChanged = true   -- se guarda al terminar el evento (un reinicio no cuenta)
 end
 
--- Diagnostics: dumps the game's race properties (the player's race component, the race state and
--- the event data) to diagnostics.txt, to find how many laps the event has and when it ends.
-local DIAGNOSTICS_PATH = modFile('diagnostics.txt')
-writeDiagnostics = function(race, label)
-    local lines = {'== ' .. os.date('%H:%M:%S') .. ' ' .. label .. ' | vueltas ' .. tostring(race.lapNumber)}
-    local function dump(title, object)
-        if not isValid(object) then lines[#lines + 1] = title .. ': no disponible'; return end
-        lines[#lines + 1] = title .. ': ' .. fullName(object)
-        local ok, err = pcall(function()
-            local class, seenClasses = object:GetClass(), {}
-            for _ = 1, 8 do
-                if not isValid(class) then break end
-                local className = fullName(class)
-                if seenClasses[className] or className:find('/Script/Engine.', 1, true) or className:find('/Script/CoreUObject.', 1, true) then break end
-                seenClasses[className] = true
-                local count = 0
-                class:ForEachProperty(function(property)
-                    count = count + 1
-                    if count > 200 then return true end
-                    local key = property:GetFName():ToString()
-                    local readOk, value = pcall(function() return object[key] end)
-                    local text
-                    if not readOk then text = '?'
-                    else
-                        local luaType = type(value)
-                        if luaType == 'number' or luaType == 'boolean' or luaType == 'string' or luaType == 'nil' then text = tostring(value)
-                        else
-                            local valueType = typeName(value)
-                            if valueType == 'FName' or valueType == 'FString' or valueType == 'FText' then
-                                local textReadOk, valueText = pcall(function() return value:ToString() end)
-                                text = textReadOk and ('"' .. valueText .. '"') or valueType
-                            elseif valueType == 'TArray' then text = 'lista[' .. #value .. ']'
-                            elseif (valueType == 'UObject' or valueType == 'AActor') and isValid(value) then text = fullName(value)
-                            else text = valueType end
-                        end
-                    end
-                    lines[#lines + 1] = '  ' .. key .. ' = ' .. text:sub(1, 160)
-                end)
-                class = class:GetSuperStruct()
-            end
-        end)
-        if not ok then lines[#lines + 1] = '  error: ' .. tostring(err) end
-    end
-    dump('PlayerRaceEventComponent', race.raceComponent)
-    dump('RacingGameState', race.gameState)
-    dump('RaceEventViewModel', readProperty(race.gameState, 'RaceEventViewModel'))
-    writeFile(DIAGNOSTICS_PATH, table.concat(lines, '\n') .. '\n')
-end
-
--- Searches the game for objects that look like records, leaderboards or saved games, and dumps
--- their data to record_search.txt. It can freeze the game for a few seconds.
--- Safety (v0.9.3): the TYPE of each field is checked before reading it. In live data only numbers,
--- booleans and names are read (a record time is a number); texts are not read, because copying a
--- text from a half-destroyed object is what closed the game in v0.9.2.
-local NUMERIC_PROPERTY_TYPES = {FloatProperty = 1, DoubleProperty = 1, IntProperty = 1, Int64Property = 1, UInt32Property = 1,
-    UInt64Property = 1, Int16Property = 1, UInt16Property = 1, Int8Property = 1, ByteProperty = 1,
-    BoolProperty = 1, EnumProperty = 1, NameProperty = 1}
-local RECORD_SEARCH_PROGRESS_PATH = modFile('record_search_progress.txt')
 local function propertyTypeName(property)
     local ok, result = pcall(function() return property:GetClass():GetFName():ToString() end)
     return ok and result or '?'
 end
-local function scalarToText(value)
-    local luaType = type(value)
-    if luaType == 'number' or luaType == 'boolean' or luaType == 'string' or luaType == 'nil' then return tostring(value) end
-    if typeName(value) == 'FName' then
-        local ok, text = pcall(function() return value:ToString() end); return ok and text or 'FName'
+-- Solo cuentan las carreras terminadas: los mejores tiempos y fantasmas del DIF que mejora una carrera se
+-- guardan al terminarla (saveRaceBests). Si se deja a medias, se vuelven a leer los del disco (discardRaceBests).
+local function saveRaceBests(race)
+    if race.bestTimesChanged then saveBestTimes(); race.bestTimesChanged = nil end
+    if race.ghostsChanged then saveGhosts(); race.ghostsChanged = nil end
+end
+local function discardRaceBests(race)
+    if race.bestTimesChanged then
+        for key in pairs(bestTimes) do bestTimes[key] = nil end
+        loadBestTimes()
+        race.bestTimesChanged = nil
     end
-    return typeName(value)
-end
-local function dumpFields(lines, holder, struct, indent, depth, allowTexts)
-    local count = 0
-    struct:ForEachProperty(function(property)
-        count = count + 1
-        if count > 200 then return true end
-        local key = property:GetFName():ToString()
-        local propertyType = propertyTypeName(property)
-        local text
-        if NUMERIC_PROPERTY_TYPES[propertyType] then
-            local readOk, value = pcall(function() return holder[key] end)
-            text = readOk and scalarToText(value) or '?'
-        elseif (propertyType == 'StrProperty' or propertyType == 'TextProperty') then
-            if allowTexts then
-                local readOk, value = pcall(function() return holder[key] end)
-                local textReadOk, valueText = false, nil
-                if readOk and value ~= nil then textReadOk, valueText = pcall(function() return value:ToString() end) end
-                text = textReadOk and ('"' .. tostring(valueText) .. '"') or 'texto'
-            else text = '(texto, no se lee)' end
-        elseif propertyType == 'StructProperty' then
-            text = 'estructura'
-            if depth < 3 then
-                local structOk, innerStruct = pcall(function() return property:GetStruct() end)
-                local readOk, value = pcall(function() return holder[key] end)
-                if structOk and readOk and innerStruct and value ~= nil then
-                    lines[#lines + 1] = indent .. key .. ' = {'
-                    local dumpOk, dumpError = pcall(dumpFields, lines, value, innerStruct, indent .. '  ', depth + 1, allowTexts)
-                    if not dumpOk then lines[#lines + 1] = indent .. '  error: ' .. tostring(dumpError) end
-                    lines[#lines + 1] = indent .. '}'
-                    return
-                end
-            end
-        elseif propertyType == 'ArrayProperty' then
-            local innerOk, innerProperty = pcall(function() return property:GetInner() end)
-            local itemType = innerOk and innerProperty and propertyTypeName(innerProperty) or '?'
-            local readOk, value = pcall(function() return holder[key] end)
-            local itemCount = (readOk and typeName(value) == 'TArray') and #value or -1
-            text = 'lista[' .. itemCount .. '] de ' .. itemType
-            if itemCount > 0 and itemCount <= 64 and NUMERIC_PROPERTY_TYPES[itemType] then
-                local items = {}
-                pcall(function() value:ForEach(function(index, element)
-                    if index > 16 then return true end
-                    items[#items + 1] = scalarToText(element:get())
-                end) end)
-                text = text .. ' ' .. table.concat(items, ', ')
-            elseif itemCount > 0 and itemCount <= 64 and itemType == 'StructProperty' and depth < 3 then
-                local structOk, innerStruct = pcall(function() return innerProperty:GetStruct() end)
-                if structOk and innerStruct then
-                    lines[#lines + 1] = indent .. key .. ' = ' .. text
-                    pcall(function() value:ForEach(function(index, element)
-                        if index > 24 then return true end
-                        lines[#lines + 1] = indent .. '  [' .. index .. '] {'
-                        local dumpOk, dumpError = pcall(dumpFields, lines, element:get(), innerStruct, indent .. '    ', depth + 1, allowTexts)
-                        if not dumpOk then lines[#lines + 1] = indent .. '    error: ' .. tostring(dumpError) end
-                        lines[#lines + 1] = indent .. '  }'
-                    end) end)
-                    return
-                end
-            end
-        elseif propertyType == 'ObjectProperty' or propertyType == 'WeakObjectProperty' or propertyType == 'SoftObjectProperty' then
-            if propertyType == 'ObjectProperty' then
-                local readOk, value = pcall(function() return holder[key] end)
-                text = (readOk and isValid(value)) and fullName(value) or 'objeto'
-            else text = propertyType end
-        else
-            text = propertyType
-        end
-        lines[#lines + 1] = indent .. key .. ' = ' .. tostring(text):sub(1, 300)
-    end)
-end
-local function dumpObject(lines, title, object, allowTexts)
-    if not isValid(object) then lines[#lines + 1] = title .. ': no disponible'; return end
-    lines[#lines + 1] = title .. ': ' .. fullName(object)
-    local ok, err = pcall(function()
-        local class, seenClasses = object:GetClass(), {}
-        for _ = 1, 8 do
-            if not isValid(class) then break end
-            local className = fullName(class)
-            if seenClasses[className] or className:find('/Script/Engine.', 1, true) or className:find('/Script/CoreUObject.', 1, true) then break end
-            seenClasses[className] = true
-            dumpFields(lines, object, class, '  ', 1, allowTexts)
-            class = class:GetSuperStruct()
-        end
-    end)
-    if not ok then lines[#lines + 1] = '  error: ' .. tostring(err) end
-end
-
--- Targeted search: the player's saved data (live objects, not game assets), and the definition of
--- the Arcade event and of its leaderboard for the event being raced.
-local SEARCH_IGNORED_CLASS_WORDS = {'delegatefunction', 'function', 'slot', 'widget', 'wbp_', 'fuse', 'moviescene', 'material',
-    'texture', 'sound', 'metasound', 'blendprofile', 'skeletal', 'staticmesh', 'animsequence', 'niagara',
-    'stringtable', 'datatable', 'curve', 'font', 'subsurface', 'physicalmaterial', 'class', 'property',
-    'scriptstruct', 'enum', 'package', 'blueprintgeneratedclass', 'recorder'}
-local SEARCH_LIVE_CLASS_WORDS = {'save', 'profile', 'progress', 'record', 'arcade', 'leaderboard', 'medal', 'besttime', 'personal', 'stats', 'unlock'}
-local SEARCH_IGNORED_NAME_WORDS = {'trash_', 'reinst_', 'skel_', 'placeholder', 'hotreload'}
-
-local function searchGameForRecords()
-    local startedAt = os.clock()
-    local outputPath = modFile('record_search.txt')
-    local lines = {'== Búsqueda de récords v3 ' .. os.date('%Y-%m-%d %H:%M:%S')}
-    local eventKey
-    if modState.race and modState.race.event and modState.race.event.id then eventKey = modState.race.event.id:gsub('^LDB_ARC_', '') end
-    eventKey = eventKey or 'TT_BIKE_DAL_A_SHORT_01'
-    lines[#lines + 1] = 'Evento buscado: ' .. eventKey
-    writeFile(RECORD_SEARCH_PROGRESS_PATH, os.date('%H:%M:%S') .. ' recorriendo objetos\n', 'w')
-    local liveObjects, definitions, liveClassCounts, objectCount = {}, {}, {}, 0
-    local iterationOk = pcall(function()
-        ForEachUObject(function(object)
-            objectCount = objectCount + 1
-            local nameOk, objectName = pcall(function() return object:GetFullName() end)
-            if not nameOk or not objectName then return end
-            local className = objectName:match('^(%S+)') or ''
-            local lowerClass, lowerName = className:lower(), objectName:lower()
-            if lowerName:find('default__', 1, true) then return end
-            for _, word in ipairs(SEARCH_IGNORED_NAME_WORDS) do if lowerName:find(word, 1, true) then return end end
-            for _, word in ipairs(SEARCH_IGNORED_CLASS_WORDS) do if lowerClass:find(word, 1, true) then return end end
-            if lowerName:find(eventKey:lower(), 1, true) and #definitions < 40 then definitions[#definitions + 1] = object end
-            local isAsset = objectName:find(' /Game/', 1, true) or objectName:find(' /Griffin', 1, true)
-            if not isAsset then
-                for _, word in ipairs(SEARCH_LIVE_CLASS_WORDS) do
-                    if lowerClass:find(word, 1, true) then
-                        liveClassCounts[className] = (liveClassCounts[className] or 0) + 1
-                        if #liveObjects < 80 then liveObjects[#liveObjects + 1] = object end
-                        return
-                    end
-                end
-            end
-        end)
-    end)
-    if not iterationOk then lines[#lines + 1] = 'ForEachUObject no disponible' end
-    lines[#lines + 1] = string.format('Objetos revisados: %d · datos vivos: %d · definiciones del evento: %d · %.1f s',
-        objectCount, #liveObjects, #definitions, os.clock() - startedAt)
-    lines[#lines + 1] = ''
-    lines[#lines + 1] = '-- Clases de datos vivos'
-    for className, count in pairs(liveClassCounts) do lines[#lines + 1] = string.format('%5d  %s', count, className) end
-    lines[#lines + 1] = ''
-    lines[#lines + 1] = '-- Lista de datos vivos (antes de leerlos)'
-    for index, object in ipairs(liveObjects) do lines[#lines + 1] = string.format('%3d  %s', index, fullName(object)) end
-    -- What is here so far is saved, even if something fails later
-    writeFile(outputPath, table.concat(lines, '\n') .. '\n', 'a')
-    local function dumpStep(title, object, allowTexts)
-        writeFile(RECORD_SEARCH_PROGRESS_PATH, os.date('%H:%M:%S') .. ' leyendo ' .. title .. ' ' .. fullName(object) .. '\n', 'w')
-        local stepLines = {''}
-        dumpObject(stepLines, title, object, allowTexts)
-        writeFile(outputPath, table.concat(stepLines, '\n') .. '\n', 'a')
+    if race.ghostsChanged then
+        for key in pairs(ghosts) do ghosts[key] = nil end
+        loadGhosts()
+        race.ghostsChanged = nil
     end
-    writeFile(outputPath, '\n-- Definiciones del evento\n', 'a')
-    for index, object in ipairs(definitions) do dumpStep('DEF ' .. index, object, true) end
-    writeFile(outputPath, '\n-- Datos vivos (solo números)\n', 'a')
-    for index, object in ipairs(liveObjects) do dumpStep('VIVO ' .. index, object, false) end
-    writeFile(outputPath, '== fin de la búsqueda\n\n', 'a')
-    writeFile(RECORD_SEARCH_PROGRESS_PATH, os.date('%H:%M:%S') .. ' terminado\n', 'w')
-    log(string.format('Búsqueda de récords v3: %d datos vivos, %d definiciones (%.1f s). Guardado en record_search.txt',
-        #liveObjects, #definitions, os.clock() - startedAt))
 end
-
 local function endRace(reason)
     local race = modState.race
     if not race then return end
-    if modState.longGuard then
-        modState.longGuard = nil
-        if #guardedOperationStack == 0 then os.remove(OPERATION_IN_PROGRESS_PATH) end
-    end
-    if race.stateWatch and #race.stateWatch.lines > 0 then writeFile(modFile('state_samples.txt'), table.concat(race.stateWatch.lines, '\n') .. '\n'); race.stateWatch.lines = {} end
-    if race.effectsScan then pcall(race.effectsScan.flush) end
     if race.ghost then local actors = race.ghost.actors or {race.ghost.actor}; race.ghost = nil; for _, actor in ipairs(actors) do pcall(function() if isValid(actor) then actor:K2_DestroyActor() end end) end end
     if race.eventEnded and race.lapNumber > 0 then
         local key = 'laps|' .. trackKey(race)
@@ -997,6 +802,7 @@ local function endRace(reason)
         end
     end
     if race.filesDeferred then
+        if not race.eventEnded then discardRaceBests(race) end
         if race.startTime and race.event and race.event.id and race.event.id:find('^LDB_ARC') then
             pcall(updateEventRecord, race, nil)
             log('Carrera cerrada (' .. reason .. '): reinicio rápido, se cuenta el intento sin guardar archivos')
@@ -1004,11 +810,18 @@ local function endRace(reason)
             log('Carrera cerrada (' .. reason .. ') antes de la salida: sin archivos')
         end
     else
-        if race.eventEnded or race.lapNumber > 0 or not race.startTime then
+        if race.eventEnded or not race.startTime then
             -- finished events count their attempt in finishEvent
         elseif race.event and race.event.id and race.event.id:find('^LDB_ARC') then pcall(updateEventRecord, race, nil) end
         flushTelemetryBuffer(race)
-        if race.telemetryPath then log('Carrera cerrada (' .. reason .. '): ' .. race.telemetryPath) end
+        if not race.eventEnded and race.startTime then
+            -- Intento sin terminar (reinicio): cuenta como intento y queda en el resumen, pero sin telemetría
+            -- ni mejores tiempos: solo cuentan las carreras completas
+            discardRaceBests(race)
+            if race.telemetryPath then os.remove(race.telemetryPath) end
+            writeSummaryLine(race, 'Intento sin terminar (reinicio): no se guardan telemetría ni mejores tiempos')
+            log('Carrera cerrada (' .. reason .. '): intento sin terminar')
+        elseif race.telemetryPath then log('Carrera cerrada (' .. reason .. '): ' .. race.telemetryPath) end
     end
     modState.race = nil
     if modState.timingPanel then pcall(modState.timingPanel.close); modState.timingPanel = nil end
@@ -1035,6 +848,14 @@ local function createRace(playerController, gameState, route, key)
         end)
     end
     log(string.format('Circuito detectado: %s (%.0f m, %d checkpoints). Preparando ruta...', race.label, routeLength / 100, #race.checkpointPositions))
+    -- Limpieza de memoria durante la carga, donde un tirón no se nota
+    collectgarbage('collect')
+    -- Ajustes del panel en carrera: se vuelven a leer en cada carrera (la app los cambia en Opciones)
+    if timingPanelLibrary then
+        local settingsOk, newSettings = pcall(timingPanelLibrary.loadSettings, modFile('timing_panel.ini'))
+        if settingsOk and newSettings then timingPanelSettings = newSettings end
+        if modState.timingPanel then pcall(modState.timingPanel.close); modState.timingPanel = nil end
+    end
     if GHOST_ENABLED and not ghostLook.searched and not safeMode.blocked.ghost_look then
         local searchOk, searchError = runGuarded('ghost_look', searchGhostMaterials)
         if not searchOk then log('Fantasma: búsqueda de materiales fallida: ' .. tostring(searchError)) end
@@ -1144,6 +965,9 @@ local function bestTimesKey(race, sectorCount, startLap)
     local beforeEventsKey = string.format('%s|vt%s|%d', base, tostring(vehicleType or '?'), sectorCount)
     if isArcadeRace(race) then
         local key = 'EVENT|' .. race.event.id .. '|' .. sectorCount
+        -- Arranque lanzado: tiempos desde el GO, con su propia clave (los antiguos, desde la puerta, no valen)
+        -- Con bonificación (Precisión), los tiempos con ella descontada, también con su propia clave
+        if race.rollingStart or race.usesBonus then return key .. (race.rollingStart and '|rolling' or '') .. (race.usesBonus and '|bonus' or '') end
         if not bestTimes[key] and bestTimes[beforeEventsKey] then bestTimes[key] = bestTimes[beforeEventsKey] end
         return key
     end
@@ -1167,6 +991,14 @@ local function setFinishLine(race, checkpoint)
             end
         end
     end
+    -- Arranque lanzado: la puerta es el final del S1 y los checkpoints de la carrerilla no cuentan
+    if race.rollingStart and race.startCheckpoint then
+        local afterGate = {race.startCheckpoint}
+        for _, index in ipairs(order) do
+            if race.checkpointDistances[index] > race.startDistance then afterGate[#afterGate + 1] = index end
+        end
+        order = afterGate
+    end
     race.sectorCheckpointOrder, race.sectorNumberOfCheckpoint = order, {}
     for position, index in ipairs(order) do race.sectorNumberOfCheckpoint[index] = position end
 end
@@ -1175,7 +1007,7 @@ end
 local function onLiveCheckpointCrossing(race, checkpoint, crossingTime)
     if not race.finishCheckpoint then return end
     local liveLap = race.liveLap
-    if checkpoint == race.finishCheckpoint or checkpoint == race.startCheckpoint then
+    if checkpoint == race.finishCheckpoint or (checkpoint == race.startCheckpoint and not race.rollingStart) then
         if not liveLap.running then
             liveLap.running, liveLap.startTime, liveLap.sectorStartTime, liveLap.sectorTimes = true, crossingTime, crossingTime, {}
         end
@@ -1183,7 +1015,7 @@ local function onLiveCheckpointCrossing(race, checkpoint, crossingTime)
     end
     if race.usesOfficialSectors then return end   -- the panel uses the game's official sectors
     if liveLap.running and race.sectorNumberOfCheckpoint[checkpoint] == #liveLap.sectorTimes + 1 then
-        liveLap.sectorTimes[#liveLap.sectorTimes + 1] = crossingTime - liveLap.sectorStartTime
+        liveLap.sectorTimes[#liveLap.sectorTimes + 1] = crossingTime - liveLap.sectorStartTime - bonusData.between(race, liveLap.sectorStartTime, crossingTime)
         liveLap.sectorStartTime = crossingTime
     end
 end
@@ -1214,6 +1046,25 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
             end
         end
     end
+    -- Arranque lanzado: tramo de una vuelta en el que el reloj de la vuelta empieza en una puerta,
+    -- más de 1 s después del GO. La carrerilla (GO a la puerta) es el S1 y el tiempo es el total.
+    local runUp = race.eventZero and (lapStart - race.eventZero)
+    local rolling = not race.isClosedCircuit and race.lapCount == 1 and race.startCheckpoint ~= nil and runUp ~= nil and runUp > 1
+    local rollingJustLearned = false
+    if rolling and not race.rollingStart then
+        race.rollingStart, rollingJustLearned = true, true
+        learnedTracks['rolling|' .. trackKey(race)] = 1
+        saveLearnedTracks()
+        setFinishLine(race, race.finishCheckpoint)
+        log(string.format('Arranque lanzado: %.3f s de carrerilla hasta la puerta (checkpoint %d)', runUp, race.startCheckpoint))
+    end
+    -- Arranque lanzado ya aprendido pero sin GO leído: no se puede sacar el total, la vuelta no cuenta para los mejores
+    local rollingWithoutGo = race.rollingStart and not rolling
+    if rolling then
+        -- La carrerilla, con el total del juego si ya lo da (así S1 + resto = total exacto)
+        local gameTotal = readProperty(race.raceComponent, 'EventFinishTime')
+        if type(gameTotal) == 'number' and gameTotal > lapTime and gameTotal - lapTime < runUp + 1 then runUp = gameTotal - lapTime end
+    end
     -- If a checkpoint is crossed twice (crash, respawn) the first crossing counts: the lost time
     -- goes into the next sector.
     local firstCrossings, repeatedCrossings = {}, 0
@@ -1232,13 +1083,24 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     local resetCount = 0
     for _, resetTime in ipairs(race.resetTimes) do if resetTime > lapStart and resetTime <= lapEnd then resetCount = resetCount + 1 end end
     local expectedCrossings = #race.checkpointDistances - (race.finishCheckpoint and 1 or 0) - (race.startCheckpoint and 1 or 0)
-    local sectorsValid = #crossingsInLap == expectedCrossings
+    -- Arranque lanzado: solo cuentan los checkpoints entre la puerta y la meta (el orden empieza por la puerta)
+    if rolling then expectedCrossings = #race.sectorCheckpointOrder - 1 end
+    local sectorsValid = #crossingsInLap == expectedCrossings and not rollingWithoutGo
     local sectorTimes, previousBoundary = {}, lapStart
-    for _, crossing in ipairs(crossingsInLap) do sectorTimes[#sectorTimes + 1] = crossing.time - previousBoundary; previousBoundary = crossing.time end
+    local boundaryTimes = {lapStart}   -- donde empieza y acaba cada sector (para la bonificación)
+    if rolling then sectorTimes[1] = runUp; boundaryTimes = {lapStart - runUp, lapStart} end
+    for _, crossing in ipairs(crossingsInLap) do
+        sectorTimes[#sectorTimes + 1] = crossing.time - previousBoundary; previousBoundary = crossing.time
+        boundaryTimes[#boundaryTimes + 1] = crossing.time
+    end
     sectorTimes[#sectorTimes + 1] = lapEnd - previousBoundary
-    local sectorCount = expectedCrossings + 1
+    boundaryTimes[#boundaryTimes + 1] = lapEnd
+    local sectorCount = expectedCrossings + (rolling and 2 or 1)
+    -- Tiempo que cuenta: la vuelta oficial o, con arranque lanzado, el total (carrerilla + vuelta)
+    local officialLapTime = lapTime
+    if rolling then lapTime = lapTime + runUp end
     -- The game's official sectors, if there are some for this lap and they add up to its time
-    local officialLap = race.usesOfficialSectors and race.officialSectors and race.officialSectors.completed[#race.officialSectors.completed]
+    local officialLap = not rolling and race.usesOfficialSectors and race.officialSectors and race.officialSectors.completed[#race.officialSectors.completed]
     if officialLap and not officialLap.used and #officialLap.sectorTimes == sectorCount and math.abs(officialLap.time - lapTime) < 0.02 then
         officialLap.used = true
         sectorTimes, sectorsValid = {}, true
@@ -1246,6 +1108,20 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
         race.lastSectorSource = 'official'
     else
         race.lastSectorSource = 'detected'
+    end
+    -- Bonificación (Precisión): la vuelta y cada sector cuentan con lo que te descuentan los puntos
+    local lapBonus, sectorBonuses = 0, {}
+    if race.usesBonus then
+        lapBonus = bonusData.between(race, boundaryTimes[1], lapEnd)
+        if #sectorTimes == #boundaryTimes - 1 then
+            for index = 1, #sectorTimes do
+                sectorBonuses[index] = bonusData.between(race, boundaryTimes[index], boundaryTimes[index + 1])
+                sectorTimes[index] = sectorTimes[index] - sectorBonuses[index]
+            end
+        else
+            sectorsValid = false
+        end
+        lapTime = lapTime - lapBonus
     end
     race.lapNumber = race.lapNumber + 1
 
@@ -1256,7 +1132,9 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     local flyingKey = bestTimesKey(race, sectorCount, false)
     local flyingBest = bestTimes[flyingKey] or {sectors = {}}
     local startBest = startLap and (bestTimes[key] or {sectors = {}}) or nil
-    local best = {lap = startLap and startBest.lap or flyingBest.lap, sectors = {}}
+    -- (sin «a and b or c»: si aún no hay mejor salida, la vuelta 1 se comparaba con la mejor lanzada)
+    local best = {sectors = {}}
+    if startLap then best.lap = startBest.lap else best.lap = flyingBest.lap end
     for index = 1, sectorCount do best.sectors[index] = (startLap and index == 1) and startBest.sectors[1] or flyingBest.sectors[index] end
     local sectorParts = {}
     for index, sectorTime in ipairs(sectorTimes) do
@@ -1271,6 +1149,17 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
         notes[#notes + 1] = string.format('incidente: %d retroceso(s), %d checkpoint(s) repetido(s)', resetCount, repeatedCrossings)
     end
     if startLap then notes[#notes + 1] = 'salida: el S1 y el tiempo se comparan con tus salidas' end
+    if rolling then notes[#notes + 1] = 'arranque lanzado: vuelta oficial ' .. formatTime(officialLapTime) end
+    if rollingWithoutGo then notes[#notes + 1] = 'arranque lanzado sin GO: no cuenta para los mejores' end
+    if race.usesBonus then
+        -- precisión: el tiempo en pista y la bonificación de la vuelta y de cada sector (y los puntos, a 1,5 s cada uno)
+        local points = lapBonus / 1.5
+        local bonusParts = {}
+        for index, value in ipairs(sectorBonuses) do bonusParts[#bonusParts + 1] = string.format('S%d -%.3f', index, value) end
+        notes[#notes + 1] = string.format('precisión: en pista %s, bonificación -%.3f%s%s', formatTime(lapTime + lapBonus), lapBonus,
+            math.abs(points - math.floor(points + 0.5)) < 0.01 and string.format(' (%d puntos)', math.floor(points + 0.5)) or '',
+            #bonusParts > 0 and (' (' .. table.concat(bonusParts, ', ') .. ')') or '')
+    end
     writeSummaryLine(race, string.format('Vuelta %d: %s%s | %s%s', race.lapNumber, formatTime(lapTime), formatDifference(lapTime, best.lap),
         table.concat(sectorParts, ' | '), #notes > 0 and (' [' .. table.concat(notes, '; ') .. ']') or ''))
 
@@ -1285,16 +1174,19 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
         sectorColors = sectorColors, isNewBest = not best.lap or lapTime < best.lap, showUntil = lapEnd + 5}
     race.lastLap = {time = lapTime, best = best.lap}
     race.lapTimesSum = (race.lapTimesSum or 0) + lapTime
-    if lapTime >= MIN_LAP_SECONDS and (not race.sessionBestLap or lapTime < race.sessionBestLap) then race.sessionBestLap = lapTime end
+    if not rollingWithoutGo and lapTime >= MIN_LAP_SECONDS and (not race.sessionBestLap or lapTime < race.sessionBestLap) then race.sessionBestLap = lapTime end
     if sectorsValid and not startLap then race.previousSectorTimes = sectorTimes end
     race.panelBestKey = bestTimesKey(race, sectorCount, false)
     -- Ghost: the fastest lap with a complete trace (if there is none yet, the first official lap)
     local oldGhost = ghosts[key]
     if race.heldLap then race.heldLap.ghostLapTime = oldGhost and oldGhost.lapTime or nil end
-    if isArcadeRace(race) and isOfficial and resetCount == 0 and repeatedCrossings == 0 and lapTime >= MIN_LAP_SECONDS and lapTime <= MAX_LAP_SECONDS
+    -- Arranque lanzado: la referencia del DIF va desde el GO. En la carrera en la que se aprende, el
+    -- recorrido se midió desde la puerta y no sirve.
+    local ghostStart = rolling and race.eventZero or lapStart
+    if isArcadeRace(race) and isOfficial and not rollingJustLearned and not rollingWithoutGo and resetCount == 0 and repeatedCrossings == 0 and lapTime >= MIN_LAP_SECONDS and lapTime <= MAX_LAP_SECONDS
         and (not oldGhost or lapTime < oldGhost.lapTime - 1e-4) then
         local liveStart = race.liveLap and race.liveLap.running and race.liveLap.startTime
-        pcall(storeGhost, race, key, lapStart, lapEnd, lapTime, (liveStart and liveStart >= lapStart - 0.5 and liveStart < lapEnd) and liveStart or lapStart)
+        pcall(storeGhost, race, key, ghostStart, lapEnd, lapTime, (liveStart and liveStart >= ghostStart - 0.5 and liveStart < lapEnd) and liveStart or ghostStart)
     end
     local closingLap = race.liveLap
     if closingLap and closingLap.top then
@@ -1308,12 +1200,13 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     race.distanceTrace, race.traceCrossedFinish = nextLapTrace, false
 
     local improved = false
-    if lapTime >= MIN_LAP_SECONDS and lapTime <= MAX_LAP_SECONDS and (not best.lap or lapTime < best.lap) then
+    if not rollingWithoutGo and lapTime >= MIN_LAP_SECONDS and lapTime <= MAX_LAP_SECONDS and (not best.lap or lapTime < best.lap) then
         best.lap = lapTime; improved = true
         if startLap then startBest.lap = lapTime else flyingBest.lap = lapTime end
         writeSummaryLine(race, startLap and '  >> Nueva mejor salida' or '  >> Nueva mejor vuelta')
     end
-    if sectorsValid then
+    -- con incidente (retroceso o checkpoint repetido) los sectores no cuentan para los mejores: harían el ideal irreal
+    if sectorsValid and resetCount == 0 and repeatedCrossings == 0 then
         for index, sectorTime in ipairs(sectorTimes) do
             local target = (startLap and index == 1) and startBest or flyingBest
             if not target.sectors[index] or sectorTime < target.sectors[index] then
@@ -1332,7 +1225,7 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     end
     bestTimes[flyingKey] = flyingBest
     if startLap then bestTimes[key] = startBest end
-    if improved and isArcadeRace(race) then saveBestTimes() end
+    if improved and isArcadeRace(race) then race.bestTimesChanged = true end   -- se guardan al terminar el evento
     if race.historyPath then
         local sectorsText = {}
         for index, sectorTime in ipairs(sectorTimes) do sectorsText[index] = string.format('%.3f', sectorTime) end
@@ -1453,13 +1346,6 @@ end
 local function finishEvent(race, reason)
     if race.eventEnded then return end
     race.eventEnded = true
-    -- the delicate part is the race itself: closing the game on the results screen is not a crash
-    if modState.longGuard then
-        if race.stateWatch and #race.stateWatch.lines > 0 then writeFile(modFile('state_samples.txt'), table.concat(race.stateWatch.lines, '\n') .. '\n'); race.stateWatch.lines = {} end
-        if race.effectsScan then pcall(race.effectsScan.flush) end
-        modState.longGuard = nil
-        if #guardedOperationStack == 0 then os.remove(OPERATION_IN_PROGRESS_PATH) end
-    end
     race.liveLap = {running = false, sectorTimes = {}}
     if race.heldLap then race.heldLap.showUntil = math.huge; race.heldLap.isFinal = true end
     log('Fin del evento (' .. reason .. ') tras ' .. race.lapNumber .. ' vueltas')
@@ -1479,8 +1365,10 @@ local function finishEvent(race, reason)
         local incomplete = race.lapCount and race.lapNumber < race.lapCount and reason ~= 'el juego da el evento por terminado'
         local updateOk, previousTotal = false, nil
         if incomplete then
-            log(string.format('Evento incompleto (%d de %d vueltas): no se guardan récord ni fantasma', race.lapNumber, race.lapCount))
+            log(string.format('Evento incompleto (%d de %d vueltas): no se guardan récord, fantasma ni mejores tiempos', race.lapNumber, race.lapCount))
+            discardRaceBests(race)
         else
+            saveRaceBests(race)
             updateOk, previousTotal = pcall(updateEventRecord, race, total)
             local ghostOk, ghostError = pcall(saveOwnGhost, race, total)
             if not ghostOk then log('Fantasma: no se pudo guardar: ' .. tostring(ghostError)) end
@@ -1494,7 +1382,6 @@ local function finishEvent(race, reason)
         if race.target and total <= race.target.time then race.notices[#race.notices + 1] = {text = panelTexts.beaten, color = 'gain'} end
         if race.historyPath then writeFile(race.historyPath, os.date('%Y-%m-%d %H:%M:%S') .. '\tsession ' .. race.sessionStamp .. '\t' .. line .. '\n') end
     end
-    writeDiagnostics(race, 'fin del evento')
 end
 
 checkEventEnd = function(race, now)
@@ -1569,7 +1456,6 @@ local function handleOfficialLapTime(race, pending)
     end
     if race.eventEnded then race.eventEnded = false; log('El evento continúa') end
     closeLap(race, lapEnd, pending.lapTime, true)
-    pcall(writeDiagnostics, race, 'vuelta ' .. race.lapNumber)
     if race.lapCount and race.lapNumber >= race.lapCount then
         finishEvent(race, 'última vuelta del evento (' .. race.lapCount .. ')')
     else
@@ -1920,6 +1806,28 @@ function ghostTrail.hideAll(trail)
     end
 end
 
+-- Mover sin perder memoria: K2_SetActorLocationAndRotation y parecidas devuelven un resultado de choque
+-- (FHitResult) que UE4SS guarda para siempre en su registro, uno por llamada (era la fuga: uno por
+-- fotograma con el fantasma). K2_TeleportTo mueve igual y no devuelve nada de eso. Si no funciona en este
+-- juego, o el juego rechaza el movimiento, se usa la de antes para no dejar el fantasma quieto.
+function ghostTrail.moveActor(actor, location, rotation)
+    if not ghostTrail.teleportBroken then
+        local ok, moved = pcall(actor.K2_TeleportTo, actor, location, rotation)   -- igual que actor:K2_TeleportTo(...), sin crear una función en cada llamada
+        if ok and moved ~= false then return end
+        if not ok then
+            ghostTrail.teleportBroken = true
+            log('Fantasma: K2_TeleportTo no funciona (' .. tostring(moved) .. '); se mueve como antes (pierde memoria)')
+        else
+            -- cada rechazo deja un resultado de choque en memoria: se cuentan para ver si son muchos
+            ghostTrail.teleportRefusals = (ghostTrail.teleportRefusals or 0) + 1
+            if ghostTrail.teleportRefusals == 1 or ghostTrail.teleportRefusals % 1000 == 0 then
+                log(string.format('Fantasma: el juego rechazó %d K2_TeleportTo en esta sesión (esas veces se mueve como antes)', ghostTrail.teleportRefusals))
+            end
+        end
+    end
+    actor:K2_SetActorLocationAndRotation(location, rotation, false, {}, true)
+end
+
 -- Coloca y muestra la pieza del color pedido de un tramo o vértice, y oculta la del otro color.
 -- El tamaño solo se manda al juego si cambia más de SCALE_TOLERANCE (es lo que más se repite).
 function ghostTrail.placeSlot(slot, color, location, rotation, scale)
@@ -1928,7 +1836,7 @@ function ghostTrail.placeSlot(slot, color, location, rotation, scale)
     for otherColor, other in pairs(slot) do
         if otherColor ~= color then ghostTrail.hidePiece(other) end
     end
-    piece.actor:K2_SetActorLocationAndRotation(location, rotation, false, {}, true)
+    ghostTrail.moveActor(piece.actor, location, rotation)
     local last, tolerance = piece.scale, ghostTrail.SCALE_TOLERANCE
     if not last or math.abs(last.X - scale.X) > last.X * tolerance or math.abs(last.Y - scale.Y) > last.Y * tolerance then
         piece.actor:SetActorScale3D(scale)
@@ -2206,6 +2114,109 @@ function ghostFlame.update(ghost, elapsed)
     end
 end
 
+-- Llama del juego en el fantasma (prueba, ghost_flame_mode = game o both): el efecto NS_RaceEngine en cada
+-- tobera del holograma, con la configuración de tu llama y sus interruptores movidos por la columna 8.
+-- Antes fallaba el color porque se copiaba tu VehicleIndex (el 0): cada vehículo de la carrera tiene el suyo
+-- (la IA usa 1, 2, 3...) y la llama lee parte de su estado de una tabla común por ese número, así que la del
+-- fantasma se pintaba según tú. Aquí se usa un número que no tenga nadie (hay carreras de 12 vehículos).
+ghostFlame.GAME_FLAME_INDEX = 15
+-- Tiempos de la secuencia del juego, en segundos (medidos con tu llama y con la de la IA)
+ghostFlame.PULSE_SECONDS, ghostFlame.RAMJET_ENGAGE_SECONDS, ghostFlame.RAMJET_COOLDOWN_SECONDS = 0.27, 0.55, 1.0
+-- Con VehicleIndex libre, el azul del ramjet solo aparecía durante el arranque (RamjetEngaging) y luego volvía el
+-- naranja (el color mantenido sale de la tabla común del juego). Prueba: mantener RamjetEngaging todo el ramjet.
+ghostFlame.HOLD_RAMJET_ENGAGING = true
+
+-- Pone un valor en una llama, con la función que corresponde a su tipo
+function ghostFlame.setValue(flame, shortName, kind, value)
+    local name = FName(shortName)
+    if kind == 'object' then
+        if not isValid(value) then return end
+        local done = pcall(function() flame:SetVariableStaticMesh(name, value) end)
+        if not done then pcall(function() flame:SetVariableObject(name, value) end) end
+    elseif type(value) ~= 'number' then
+        return
+    elseif kind == 'integer' then pcall(function() flame:SetVariableInt(name, value) end)
+    elseif kind == 'float' then pcall(function() flame:SetVariableFloat(name, value) end)
+    else pcall(function() flame:SetVariableBool(name, value ~= 0) end)
+    end
+end
+
+function ghostFlame.spawnGameFlames(ghost, pawn)
+    if not ghostTrail.hasMotorData(ghost.points) then return 'sin llama del juego (el fantasma no trae datos de postcombustión ni ramjet)' end
+    local library = StaticFindObject('/Script/Niagara.Default__NiagaraFunctionLibrary')
+    if not isValid(library) then return 'sin llama del juego (no está la librería de efectos)' end
+    local socket = FName(ghostFlame.ENGINE_SOCKET)
+    local flames = {}
+    for _, part in ipairs(ghost.parts or {}) do
+        local copyComponent = isValid(part.copy) and readProperty(part.copy, 'StaticMeshComponent')
+        local hasSocket = false
+        if isValid(copyComponent) then pcall(function() hasSocket = copyComponent:DoesSocketExist(socket) end) end
+        local source = hasSocket and ghostFlame.findSourceFlame(pawn, part.source) or nil
+        local system = source and readProperty(source, 'Asset')
+        if isValid(system) then
+            local parameters = ghostFlame.readParameters(source)
+            local flame
+            pcall(function()
+                flame = library:SpawnSystemAttached(system, copyComponent, socket, {X = 0, Y = 0, Z = 0}, {Pitch = 0, Yaw = 0, Roll = 0},
+                    ghostFlame.SNAP_TO_TARGET, false, true, 0, false)
+            end)
+            if isValid(flame) then
+                for _, parameter in ipairs(parameters) do
+                    local value = parameter.value
+                    if parameter.short == 'VehicleIndex' then value = ghostFlame.GAME_FLAME_INDEX end
+                    ghostFlame.setValue(flame, parameter.short, parameter.kind, value)
+                end
+                flames[#flames + 1] = {component = flame}
+            end
+        end
+    end
+    if #flames == 0 then return 'sin llama del juego (no se pudo crear en ningún motor)' end
+    ghost.gameFlames = flames
+    return string.format('llama del juego en %d motor(es), con VehicleIndex %d', #flames, ghostFlame.GAME_FLAME_INDEX)
+end
+
+-- Cómo mueve el juego los interruptores de la llama (en el efecto, -1 = sí; igual en tu llama y en la de la IA):
+--   postcombustión: AfterburnerPressed es un pulso de ~0,27 s al empezar, y AfterburnerRecovering está en "no"
+--     mientras dura (y en "sí" el resto del tiempo)
+--   ramjet: 0,55 s de arranque (RamjetEngaging y RamjetMode); luego RamjetActive, con un pulso de RamjetPressed,
+--     hasta que acaba (RamjetMode sigue en "sí"); al terminar, 1 s de RamjetCoolingDown
+function ghostFlame.switchesFor(boost, since, previous)
+    local engage, pulse = ghostFlame.RAMJET_ENGAGE_SECONDS, ghostFlame.PULSE_SECONDS
+    return {
+        AfterburnerPressed = boost == 'A' and since < pulse,
+        AfterburnerRecovering = boost ~= 'A',
+        RamjetMode = boost == 'R',
+        RamjetEngaging = boost == 'R' and (ghostFlame.HOLD_RAMJET_ENGAGING or since < engage),
+        RamjetActive = boost == 'R' and since >= engage,
+        RamjetPressed = boost == 'R' and since >= engage and since < engage + pulse,
+        RamjetCoolingDown = boost ~= 'R' and previous == 'R' and since < ghostFlame.RAMJET_COOLDOWN_SECONDS,
+    }
+end
+
+-- Cada fotograma: los interruptores de la llama del juego siguen al fantasma (solo se tocan los que cambian)
+function ghostFlame.updateGameFlames(ghost, elapsed)
+    local point = ghostPointAt(ghost.points, elapsed)
+    local boost = point and point.boost
+    if boost ~= 'A' and boost ~= 'R' then boost = 'N' end
+    local state = ghost.gameFlameState
+    if not state or state.boost ~= boost or elapsed < state.since then
+        state = {boost = boost, since = elapsed, previous = state and state.boost}
+        ghost.gameFlameState = state
+    end
+    local switches = ghostFlame.switchesFor(boost, elapsed - state.since, state.previous)
+    for _, flame in ipairs(ghost.gameFlames) do
+        if isValid(flame.component) then
+            flame.switches = flame.switches or {}
+            for name, on in pairs(switches) do
+                if flame.switches[name] ~= on then
+                    flame.switches[name] = on
+                    pcall(function() flame.component:SetVariableBool(FName(name), on) end)
+                end
+            end
+        end
+    end
+end
+
 local function moveRaceGhost()
     local race = modState.race
     local ghost = race and race.ghost
@@ -2229,12 +2240,16 @@ local function moveRaceGhost()
     local location = {X = from.x + (to.x - from.x) * fraction, Y = from.y + (to.y - from.y) * fraction, Z = from.z + (to.z - from.z) * fraction + ghost.lift}
     if ghost.rotates then
         local function angle(a, b) local difference = ((b - a + 540) % 360) - 180; return a + difference * fraction end
-        ghost.actor:K2_SetActorLocationAndRotation(location, {Pitch = angle(from.pitch, to.pitch), Yaw = angle(from.yaw, to.yaw), Roll = angle(from.roll, to.roll)}, false, {}, true)
+        ghostTrail.moveActor(ghost.actor, location, {Pitch = angle(from.pitch, to.pitch), Yaw = angle(from.yaw, to.yaw), Roll = angle(from.roll, to.roll)})
     else
-        ghost.actor:K2_SetActorLocation(location, false, {}, true)
+        -- sin giro grabado: mantiene el que tiene (se lee una vez)
+        ghost.fixedRotation = ghost.fixedRotation or ghost.actor:K2_GetActorRotation()
+        local facing = ghost.fixedRotation
+        ghostTrail.moveActor(ghost.actor, location, {Pitch = facing.Pitch, Yaw = facing.Yaw, Roll = facing.Roll})
     end
     if ghost.trail then pcall(ghostTrail.draw, ghost, elapsed, race) end
     if ghost.flameEngines then pcall(ghostFlame.update, ghost, elapsed) end
+    if ghost.gameFlames then pcall(ghostFlame.updateGameFlames, ghost, elapsed) end
 end
 local ghostLoopStarted, ghostMoveFailed = false, false
 local function startGhostLoop()
@@ -2272,8 +2287,8 @@ end
 -- Opciones del fantasma elegidas en la app (menú de ajustes), guardadas en preferences.txt y leídas al
 -- empezar cada carrera: ghost_enabled (on/off), ghost_transparency (low/medium/high), ghost_trail (on/off),
 -- ghost_flame (on/off; aún sin botón en la app, encendida por defecto mientras se prueba),
--- ghost_trail_transparency (low/medium/high)
-local ghostSettings = {enabled = true, transparency = 'medium', trail = false, flame = true, trailTransparency = 'low'}
+-- ghost_trail_transparency (low/medium/high), ghost_flame_mode (game/own/both; game por defecto)
+local ghostSettings = {enabled = true, transparency = 'medium', trail = false, flame = true, trailTransparency = 'low', flameMode = 'game'}
 -- Holograma más ligero de dibujar (el cristal es caro y se notaban tirones al verlo desde abajo):
 -- no se copian las piezas pequeñas de tu vehículo (radio menor que este, en cm), salvo las de los motores,
 -- y cada pieza usa un nivel de detalle más bajo (1 = el más detallado, 2 = el siguiente...; si la malla no
@@ -2307,7 +2322,7 @@ ghostSettings.TRAIL_LEVELS = {
 -- Cuánto se aclara el color del borde (Color Edge) mezclándolo con blanco: 0 = el mismo color, 1 = blanco
 ghostSettings.EDGE_LIGHTEN = 0.5
 function ghostSettings.read()
-    local enabled, transparency, trail, flame, trailTransparency = 'on', 'medium', 'off', 'on', 'low'   -- valores por defecto
+    local enabled, transparency, trail, flame, trailTransparency, flameMode = 'on', 'medium', 'off', 'on', 'low', 'game'   -- valores por defecto
     local file = io.open(modFile('preferences.txt'), 'r')
     if file then
         for line in file:lines() do
@@ -2317,6 +2332,7 @@ function ghostSettings.read()
             elseif key == 'ghost_trail' then trail = value
             elseif key == 'ghost_flame' then flame = value
             elseif key == 'ghost_trail_transparency' then trailTransparency = value
+            elseif key == 'ghost_flame_mode' then flameMode = value
             end
         end
         file:close()
@@ -2326,6 +2342,7 @@ function ghostSettings.read()
     ghostSettings.flame = flame ~= 'off'
     ghostSettings.transparency = ghostSettings.TRANSPARENCY_LEVELS[transparency] and transparency or 'medium'
     ghostSettings.trailTransparency = ghostSettings.TRAIL_LEVELS[trailTransparency] and trailTransparency or 'low'
+    ghostSettings.flameMode = (flameMode == 'own' or flameMode == 'both') and flameMode or 'game'   -- la del juego, por defecto
 end
 
 -- use: 'body' (el holograma, por defecto), 'flame' (la llama) o 'trail' (la estela, siempre igual)
@@ -2665,238 +2682,18 @@ local function placePendingGhost(race, pawn)
         log('Fantasma: estela apagada en la app')
     end
     -- La llama del juego en los motores del holograma (prueba), con su propio nombre en el modo seguro
-    if ghostSettings.flame and race.ghost and race.ghost.parts and not safeMode.blocked.ghost_flame then
+    -- ghost_flame_mode: own (piezas propias), game (llama del juego) o both (las dos)
+    local flameMode = ghostSettings.flameMode
+    if ghostSettings.flame and race.ghost and race.ghost.parts and flameMode ~= 'game' and not safeMode.blocked.ghost_flame then
         local _, flameNote = runGuarded('ghost_flame', ghostFlame.spawn, race.ghost, pawn)
         log('Fantasma: ' .. tostring(flameNote))
     end
+    if ghostSettings.flame and race.ghost and race.ghost.parts and flameMode ~= 'own' and not safeMode.blocked.ghost_game_flame then
+        local _, gameFlameNote = runGuarded('ghost_game_flame', ghostFlame.spawnGameFlames, race.ghost, pawn)
+        log('Fantasma: ' .. tostring(gameFlameNote))
+    end
     log('Fantasma: ' .. pending.label .. (problem and (' (' .. problem .. ')') or ''))
     startGhostLoop()
-end
-
--- Diagnostics (0.9.29, to find the special turn, the "square" button): every 0.1 s the yes/no and
--- number settings of the vehicle state, the vehicle and its ability or movement parts are compared,
--- and every change goes to state_samples.txt with the race time and lap. Only names and values are read.
-local STATE_WATCH_TYPES = {BoolProperty = true, IntProperty = true, ByteProperty = true, EnumProperty = true, FloatProperty = true, DoubleProperty = true}
-local STATE_WATCH_LIMIT = 20000
-local function watchedPropertyNames(object)
-    local names = {}
-    pcall(function()
-        local class = object:GetClass()
-        for _ = 1, 8 do
-            if not isValid(class) then break end
-            class:ForEachProperty(function(property)
-                if STATE_WATCH_TYPES[propertyTypeName(property)] then
-                    local nameOk, name = pcall(function() return property:GetFName():ToString() end)
-                    if nameOk and name then names[#names + 1] = name end
-                end
-            end)
-            class = class:GetSuperStruct()
-        end
-    end)
-    return names
-end
-local function startStateWatch(race, pawn)
-    local watch = {objects = {}, values = {}, lines = {}, count = 0, nextAt = 0}
-    local function add(object, label)
-        if isValid(object) then
-            local names = watchedPropertyNames(object)
-            if #names > 0 then watch.objects[#watch.objects + 1] = {object = object, label = label, names = names} end
-        end
-    end
-    add(readProperty(pawn, 'VehicleState'), 'VehicleState')
-    -- 0.9.30: only the vehicle state (read every race for the boost since 0.9.26 without trouble); the
-    -- vehicle itself and its ability parts were being read when the game closed twice
-    local summary = {}
-    for _, entry in ipairs(watch.objects) do summary[#summary + 1] = entry.label .. ' (' .. #entry.names .. ': ' .. table.concat(entry.names, ', ') .. ')' end
-    local existing, size = io.open(modFile('state_samples.txt'), 'r'), 0
-    if existing then size = existing:seek('end') or 0; existing:close() end
-    local vehicle = (race.event and race.event.id or '?'):match('_(BIKE)_') or (race.event and race.event.id or ''):match('_(CAR)_')
-        or (race.event and race.event.id or ''):match('_(SKIMMER)_') or (race.event and race.event.id or ''):match('_(PLANE)_') or '?'
-    writeFile(modFile('state_samples.txt'), '\n== ' .. os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. tostring(race.label) .. ' | ' .. vehicle .. ' | ' .. table.concat(summary, ', ') ..
-        '\ntiempo\tvuelta\tboost\tdato\tantes -> ahora\n', size > 2000000 and 'w' or 'a')   -- one section per race
-    race.stateWatch = watch
-    -- the whole race counts as the delicate part: if the game closes during it, the next session does not watch
-    modState.longGuard = 'state_watch'
-    if #guardedOperationStack == 0 then writeFile(OPERATION_IN_PROGRESS_PATH, 'state_watch\n', 'w') end
-    log('Diagnóstico de estados: ' .. table.concat(summary, ', ') .. ' -> state_samples.txt')
-end
-local function sampleStateWatch(race, now, boost)
-    local watch = race.stateWatch
-    if not watch or now < watch.nextAt or watch.count >= STATE_WATCH_LIMIT then return end
-    watch.nextAt = now + 0.1
-    local elapsed = now - (race.eventZero or race.startTime or now)
-    for _, entry in ipairs(watch.objects) do
-        for _, name in ipairs(isValid(entry.object) and entry.names or {}) do
-            local ok, value = pcall(function() return entry.object[name] end)
-            if ok then
-                local text = scalarToText(value)
-                -- decimals change all the time: only whether they are zero, positive or negative
-                if type(value) == 'number' and math.type and math.type(value) == 'float' then text = value > 1e-4 and '+' or (value < -1e-4 and '-' or '0') end
-                local key = entry.label .. '.' .. name
-                local before = watch.values[key]
-                if before ~= nil and before ~= text then
-                    watch.lines[#watch.lines + 1] = string.format('%.2f\t%d\t%s\t%s\t%s -> %s', elapsed, race.lapNumber + 1, boost or '', key, before, text)
-                    watch.count = watch.count + 1
-                end
-                watch.values[key] = text
-            end
-        end
-    end
-    if #watch.lines >= 10 then writeFile(modFile('state_samples.txt'), table.concat(watch.lines, '\n') .. '\n'); watch.lines = {} end
-end
-
--- Diagnóstico de efectos (para que el fantasma lleve las llamas de sus propulsores): al dar la salida se
--- apuntan en logs\effects.txt los efectos de partículas de tu vehículo (tipo, efecto, pieza y posición), y
--- durante la carrera, cada 0,25 s, cuándo se encienden o se apagan, con el boost de ese momento.
--- Solo lee (nombres y si están encendidos), no crea nada. Si el juego se cierra, se desactiva solo.
-local effectsScan = {ENABLED = false, LIMIT = 5000, CLASSES = {'/Script/Niagara.NiagaraComponent', '/Script/Engine.ParticleSystemComponent'}}
-
--- Lo último de una ruta de objeto (Pieza_C_123 en vez de toda la ruta)
-function effectsScan.shortName(object)
-    local name = fullName(object)
-    return name:match('([^%.:/ ]+)$') or name
-end
-
-function effectsScan.isActive(component)
-    local ok, active = pcall(function() return component:IsActive() end)
-    if not ok then return '?' end
-    return active and 'encendido' or 'apagado'
-end
-
--- Una línea con todo lo que se sabe de un efecto
-function effectsScan.describe(index, owner, component)
-    local className = '?'
-    pcall(function() className = component:GetClass():GetFName():ToString() end)
-    local asset = readProperty(component, 'Asset') or readProperty(component, 'Template')
-    local parent, socket = '', ''
-    pcall(function() parent = effectsScan.shortName(component:GetAttachParent()) end)
-    pcall(function() socket = component:GetAttachSocketName():ToString() end)
-    local where = readProperty(component, 'RelativeLocation')
-    local location = where and string.format('%.0f, %.0f, %.0f', where.X, where.Y, where.Z) or '?'
-    local visible = '?'
-    pcall(function() visible = component:IsVisible() and 'visible' or 'oculto' end)
-    return string.format('%d\t%s\t%s\tefecto: %s\tdueño: %s\tpieza: %s\tsocket: %s\tposición: %s\t%s\t%s', index, className,
-        effectsScan.shortName(component), fullName(asset), effectsScan.shortName(owner), parent, socket, location, visible, effectsScan.isActive(component))
-end
-
-function effectsScan.start(race, pawn)
-    local owners = {pawn}
-    for _, attached in ipairs(attachedActors(pawn)) do owners[#owners + 1] = attached end
-    local scan = {entries = {}, lines = {}, count = 0, nextAt = 0}
-    local header = {}
-    for _, classPath in ipairs(effectsScan.CLASSES) do
-        local class = StaticFindObject(classPath)
-        if isValid(class) then
-            for _, owner in ipairs(owners) do
-                local components = {}
-                pcall(function() components = toList(owner:K2_GetComponentsByClass(class)) end)
-                for _, component in ipairs(components) do
-                    if isValid(component) then
-                        local index = #scan.entries + 1
-                        scan.entries[index] = {component = component, state = effectsScan.isActive(component)}
-                        header[#header + 1] = effectsScan.describe(index, owner, component)
-                    end
-                end
-            end
-        else
-            header[#header + 1] = '(no existe la clase ' .. classPath .. ')'
-        end
-    end
-    -- Vuelca lo pendiente al archivo (se guarda en la propia tabla para llamarlo al acabar la carrera)
-    function scan.flush()
-        if #scan.lines > 0 then writeFile(modFile('effects.txt'), table.concat(scan.lines, '\n') .. '\n'); scan.lines = {} end
-    end
-    local existing, size = io.open(modFile('effects.txt'), 'r'), 0
-    if existing then size = existing:seek('end') or 0; existing:close() end
-    writeFile(modFile('effects.txt'), string.format('\n== %s %s | %s | %d efectos en %d piezas (el vehículo y lo que lleva enganchado)\n%s\ntiempo\tvuelta\tboost\tefecto\tantes -> ahora\n',
-        os.date('%Y-%m-%d %H:%M:%S'), tostring(race.label), vehicleStateData.vehicleType(race) or '?', #scan.entries, #owners, table.concat(header, '\n')),
-        size > 2000000 and 'w' or 'a')   -- una sección por carrera
-    race.effectsScan = scan
-    -- toda la carrera cuenta como la parte delicada: si el juego se cierra, la siguiente sesión no lo hace
-    if not modState.longGuard then
-        modState.longGuard = 'effects_scan'
-        if #guardedOperationStack == 0 then writeFile(OPERATION_IN_PROGRESS_PATH, 'effects_scan\n', 'w') end
-    end
-    log(string.format('Diagnóstico de efectos: %d efectos en tu vehículo -> effects.txt', #scan.entries))
-end
-
-function effectsScan.sample(race, now, boost)
-    local scan = race.effectsScan
-    if not scan or now < scan.nextAt or scan.count >= effectsScan.LIMIT then return end
-    scan.nextAt = now + 0.25
-    local elapsed = now - (race.eventZero or race.startTime or now)
-    for index, entry in ipairs(scan.entries) do
-        if isValid(entry.component) then
-            local state = effectsScan.isActive(entry.component)
-            if state ~= entry.state then
-                scan.lines[#scan.lines + 1] = string.format('%.2f\t%d\t%s\t%d\t%s -> %s', elapsed, race.lapNumber + 1, boost or '', index, entry.state, state)
-                scan.count = scan.count + 1
-                entry.state = state
-            end
-        end
-    end
-    scan.boost = boost   -- para las líneas de los valores de los motores
-    if #scan.lines >= 10 then scan.flush() end
-end
-
-effectsScan.ENGINE_EFFECT = 'NS_RaceEngine'
-
--- Nombres y tipos de las propiedades de un objeto (su clase y las de las que hereda)
-function effectsScan.propertyList(object)
-    local names = {}
-    pcall(function()
-        local class = object:GetClass()
-        for _ = 1, 8 do
-            if not isValid(class) then break end
-            class:ForEachProperty(function(property)
-                local name = '?'
-                pcall(function() name = property:GetFName():ToString() end)
-                names[#names + 1] = name .. ':' .. tostring(propertyTypeName(property))
-            end)
-            class = class:GetSuperStruct()
-        end
-    end)
-    return names
-end
-
--- Apunta en effects.txt las propiedades del efecto de motor y los nombres de sus valores ajustables (de usuario)
-function effectsScan.describeEngineSystem(scan, system)
-    if not isValid(system) then scan.lines[#scan.lines + 1] = '(efecto de motor: no se pudo leer)'; return end
-    scan.lines[#scan.lines + 1] = '(efecto de motor ' .. fullName(system) .. ': propiedades ' .. table.concat(effectsScan.propertyList(system), ', ') .. ')'
-    local exposed = readProperty(system, 'ExposedParameters')
-    if not exposed then scan.lines[#scan.lines + 1] = '(sin ExposedParameters)'; return end
-    for _, field in ipairs({'SortedParameterOffsets', 'Parameters', 'UserParameterRedirects'}) do
-        local names = {}
-        pcall(function()
-            for _, element in ipairs(toList(exposed[field])) do
-                local name = '?'
-                pcall(function() name = element.Name:ToString() end)
-                if name == '?' then pcall(function() name = element.Variable.Name:ToString() end) end
-                names[#names + 1] = name
-            end
-        end)
-        scan.lines[#scan.lines + 1] = string.format('(valores ajustables, %s: %s)', field, #names > 0 and table.concat(names, ', ') or 'nada')
-    end
-end
-
--- Al empezar la carrera: qué efectos son de motor
-function effectsScan.startEngineWatch(race)
-    local scan = race.effectsScan
-    scan.engines, scan.engineValues = {}, {}
-    local engineCount = 0
-    for index, entry in ipairs(scan.entries) do
-        local assetName = ''
-        pcall(function() assetName = fullName(readProperty(entry.component, 'Asset') or readProperty(entry.component, 'Template')) end)
-        local key = address(entry.component)
-        if key and assetName:find(effectsScan.ENGINE_EFFECT, 1, true) then scan.engines[key] = index; engineCount = engineCount + 1 end
-    end
-    -- Los valores ajustables del efecto de motor (para la llama del fantasma)
-    local firstEngine
-    for _, entry in ipairs(scan.entries) do
-        if scan.engines[address(entry.component) or ''] then firstEngine = entry.component; break end
-    end
-    if firstEngine then pcall(effectsScan.describeEngineSystem, scan, readProperty(firstEngine, 'Asset')) end
-    scan.lines[#scan.lines + 1] = string.format('(%d efectos de motor)', engineCount)
 end
 
 local function recordSample(race, playerController)
@@ -2945,43 +2742,36 @@ local function recordSample(race, playerController)
             race.lapCount = (lapCount and lapCount >= 1) and lapCount or learnedTracks['laps|' .. trackKey(race)]
             distance = race.direction == -1 and (routeLength - routeDistance) or routeDistance
             race.lapStartTime = now
+            race.runStartDistance = distance   -- donde arrancas (para el DIF desde el GO en los arranques lanzados)
             race.startDistance = learnedTracks['start|' .. trackKey(race)]
+            race.rollingStart = race.lapCount == 1 and learnedTracks['rolling|' .. trackKey(race)] ~= nil or nil
+            -- Bonificación de tiempo (Precisión): el juego dice si el evento la usa
+            local startViewModel = readProperty(race.gameState, 'RaceEventViewModel')
+            race.usesBonus = isValid(startViewModel) and readProperty(startViewModel, 'bWantsBonusTimer') == true or nil
+            race.bonusTime, race.bonusChanges = 0, {}
+            if race.usesBonus then log('Evento con bonificación de tiempo: vueltas y sectores con ella descontada') end
             local savedFinish = learnedTracks['finish|' .. trackKey(race)]
             if savedFinish then
                 for index, checkpointDistance in ipairs(race.checkpointDistances) do
                     if math.abs(checkpointDistance - savedFinish) < 1000 then setFinishLine(race, index); log('Meta recordada: checkpoint ' .. index); break end
                 end
             end
-            writeFile(DIAGNOSTICS_PATH, '', 'w')
-            pcall(writeDiagnostics, race, 'salida')
             events = events .. 'START '
             log(string.format('Salida. Sentido %s.', race.direction == 1 and 'de la ruta' or 'inverso'))
             pcall(readPanelLanguage)   -- the language may have changed in the app since the last race
             pcall(readRivals)
-            if STATE_WATCH_ENABLED and not safeMode.blocked.state_watch and not race.stateWatch then   -- every race: the file keeps the last one
-                local watchOk, watchError = runGuarded('state_watch', startStateWatch, race, pawn)
-                if not watchOk then log('Diagnóstico de estados fallido: ' .. tostring(watchError)) end
-            end
-            if effectsScan.ENABLED and not safeMode.blocked.effects_scan and not race.effectsScan then
-                local scanOk, scanError = runGuarded('effects_scan', effectsScan.start, race, pawn)
-                if not scanOk then log('Diagnóstico de efectos fallido: ' .. tostring(scanError)) end
-                if race.effectsScan then
-                    local watchOk, watchError = runGuarded('effects_scan', effectsScan.startEngineWatch, race)
-                    if not watchOk then log('Diagnóstico de efectos (valores) fallido: ' .. tostring(watchError)) end
-                end
-            end
             -- The hologram was copied during the intro, when the vehicle may be posed differently (a bike on a
             -- slope ended up upright the whole race): its pieces are put again as your vehicle is at the GO
             if race.ghost and race.ghost.parts then
                 local snapOk, snapError = pcall(function()
                     local base = race.ghost.actor
                     local where, facing = pawn:K2_GetActorLocation(), pawn:K2_GetActorRotation()
-                    base:K2_SetActorLocationAndRotation({X = where.X, Y = where.Y, Z = where.Z}, {Pitch = facing.Pitch, Yaw = facing.Yaw, Roll = facing.Roll}, false, {}, true)
+                    ghostTrail.moveActor(base, {X = where.X, Y = where.Y, Z = where.Z}, {Pitch = facing.Pitch, Yaw = facing.Yaw, Roll = facing.Roll})
                     for _, part in ipairs(race.ghost.parts) do
                         if isValid(part.copy) and isValid(part.source) then
                             local location, rotation = part.source:K2_GetComponentLocation(), part.source:K2_GetComponentRotation()
-                            part.copy:K2_SetActorLocationAndRotation({X = location.X, Y = location.Y, Z = location.Z},
-                                {Pitch = rotation.Pitch, Yaw = rotation.Yaw, Roll = rotation.Roll}, false, {}, true)
+                            ghostTrail.moveActor(part.copy, {X = location.X, Y = location.Y, Z = location.Z},
+                                {Pitch = rotation.Pitch, Yaw = rotation.Yaw, Roll = rotation.Roll})
                         end
                     end
                 end)
@@ -3086,6 +2876,14 @@ local function recordSample(race, playerController)
     if isValid(viewModel) then
         local eventTime = readProperty(viewModel, 'CurrentEventTime')
         if type(eventTime) == 'number' and eventTime >= 0 then race.eventTime = eventTime end
+        if race.usesBonus then
+            local bonus = tonumber(readProperty(viewModel, 'CurrentBonusTime'))
+            if bonus and math.abs(bonus - race.bonusTime) > 1e-4 then
+                events = events .. string.format('BONUS%+.3f ', bonus - race.bonusTime)   -- marca en el CSV, para la app
+                race.bonusTime = bonus
+                race.bonusChanges[#race.bonusChanges + 1] = {time = now, total = bonus}
+            end
+        end
         if not race.target then
             local targetTime = readProperty(viewModel, 'CurrentTargetTime')
             if type(targetTime) == 'number' and targetTime > 0 then
@@ -3163,7 +2961,7 @@ local function recordSample(race, playerController)
         if now - liveLap.startTime > 4 then liveLap.minimum = math.min(liveLap.minimum or kmh, kmh) end
     end
     if race.ghost and race.startTime and isValid(race.ghost.actor) and now >= (race.ghostReportAt or 0) then
-        race.ghostReportAt = now + 10
+        race.ghostReportAt = now + 30
         pcall(function()
             local where = race.ghost.actor:K2_GetActorLocation()
             log(string.format('Fantasma: a %.0f s, a %.0f m de ti', now - race.startTime,
@@ -3173,7 +2971,17 @@ local function recordSample(race, playerController)
     -- Points of this race for its ghost, every 0.1 s from the start
     if race.eventTime and race.eventTime > 0.05 and not race.eventEnded then
         local zero = now - race.eventTime   -- the moment of the GO in the game clock (the lowest is the freshest reading)
+        if not race.eventZero then events = events .. 'GO ' end   -- marca en el CSV: la app empieza ahí los arranques lanzados
         if not race.eventZero or zero < race.eventZero then race.eventZero = zero end
+    end
+    -- Arranque lanzado: la vuelta del panel corre desde el GO (el S1 acaba en la puerta)
+    if race.rollingStart and race.eventZero and race.lapNumber == 0 and not race.eventEnded then
+        local liveLap = race.liveLap
+        if not liveLap or not liveLap.running then
+            race.liveLap = {running = true, startTime = race.eventZero, sectorStartTime = race.eventZero, sectorTimes = {}}
+        elseif #liveLap.sectorTimes == 0 then
+            liveLap.startTime, liveLap.sectorStartTime = race.eventZero, race.eventZero
+        end
     end
     -- Estado del vehículo (estela blanca y freno), una sola lectura para el fantasma y el CSV
     local stateOk, stateValues = pcall(vehicleStateData.read, race, pawn)
@@ -3192,8 +3000,6 @@ local function recordSample(race, playerController)
         end
     end
     local boostOk, boost = pcall(boostCode, race, pawn)
-    if race.stateWatch then pcall(sampleStateWatch, race, now, boostOk and boost or '') end
-    if race.effectsScan then pcall(effectsScan.sample, race, now, boostOk and boost or '') end
     local stateCsvOk, stateCsv = pcall(vehicleStateData.csv, stateValues)
     if not stateCsvOk then stateCsv = vehicleStateData.csv({}) end   -- columnas vacías
     race.telemetryBuffer[#race.telemetryBuffer + 1] = string.format('%.4f,%d,%.4f,%.1f,%.5f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%.1f,%.1f,%s,%s,%s',
@@ -3213,6 +3019,7 @@ local function recordSample(race, playerController)
     if race.finishCheckpoint and race.checkpointDistances and race.liveLap and race.liveLap.running and race.liveLap.startTime then
         local lapDistance
         if race.isClosedCircuit then lapDistance = (distance - race.checkpointDistances[race.finishCheckpoint] + routeLength) % routeLength
+        elseif race.rollingStart and race.runStartDistance then lapDistance = distance - race.runStartDistance
         elseif race.startDistance then lapDistance = distance - race.startDistance end
         if lapDistance then
             local trace = race.distanceTrace or {}
@@ -3228,7 +3035,7 @@ local function recordSample(race, playerController)
                 local ghost = ghosts[race.ghostKey or race.panelBestKey or '']
                 if ghost and lapDistance > 2000 then
                     local ghostTime = ghostTimeAtDistance(ghost, lapDistance)
-                    if ghostTime then race.liveDifference = (now - race.liveLap.startTime) - ghostTime end
+                    if ghostTime then race.liveDifference = (now - race.liveLap.startTime - bonusData.between(race, race.liveLap.startTime, now)) - ghostTime end
                 end
             end
         end
@@ -3254,6 +3061,8 @@ local function updateTimingPanel(playerController, race)
     end
     if os.clock() < modState.timingPanelRetryAt or safeMode.blocked.timing_panel then return end
     local sectorCount = #race.checkpointDistances - (race.startCheckpoint and 1 or 0)
+    -- Arranque lanzado: S1 (GO a la puerta) más los sectores de la puerta a la meta
+    if race.rollingStart and race.startCheckpoint and race.sectorCheckpointOrder then sectorCount = #race.sectorCheckpointOrder + 1 end
     local bottomRows = timingPanelLibrary.bottomRows(settings, race.lapCount)
     local panel = modState.timingPanel
     if not panel or panel.sectorCount ~= sectorCount or panel.bottomRowCount ~= #bottomRows or not panel.isAlive() then
@@ -3358,7 +3167,7 @@ local function updateTimingPanel(playerController, race)
         local liveLap = race.liveLap
         local running = liveLap.running and liveLap.startTime
         panel.setCell(1, 1, running and (singleLap and panelTexts.stage or (panelTexts.lap .. (race.lapNumber + 1))) or panelTexts.start, colors.title)
-        local runningTime = running and math.max(0, now - liveLap.startTime)
+        local runningTime = running and math.max(0, now - liveLap.startTime - bonusData.between(race, liveLap.startTime, now))
         if singleLap and race.eventTime and race.eventTime > 0 then runningTime = race.eventTime end   -- stages: from the start
         panel.setCell(1, 2, runningTime and formatRunningTime(runningTime) or '--', colors.text)
         panel.setCell(1, 3, '', colors.dim)
@@ -3553,88 +3362,8 @@ local function readAssetText(object, keys)
     return ''
 end
 readSafeText = function(object, key) return readAssetText(object, {key}) end
--- Diagnostics (once per session): names and types of the track and planet properties, without
--- reading their values except checked texts. They go to log.txt.
-local planetDiagnosticsDone, planetNameDiagnosticsDone, loadedPlanetsLogged = false, false, false
 -- Planet codes in the event names and the game's internal codename of each planet
 local PLANET_CODENAMES = {DAL = 'Dalmatian', MAS = 'Mastiff', COR = 'Corgi', SPA = 'Spaniel', HSK = 'Husky', WHP = 'Whippet', BGL = 'Beagle'}
--- Diagnostics (once): every planet the game has loaded, with its visible name
-local function logLoadedPlanets()
-    loadedPlanetsLogged = true
-    local planets = {}
-    for _, planetDefinition in ipairs(FindAllOf('PlanetDef') or {}) do
-        if isLiveObject(planetDefinition) then
-            local shortName = (fullName(planetDefinition):match('%.([%w_]+)$') or '?')
-            planets[#planets + 1] = shortName .. ' = "' .. readAssetText(planetDefinition, {'PlayerFacingName'}) .. '"'
-            if #planets >= 20 then break end
-        end
-    end
-    log('Diagnóstico planeta · cargados: ' .. (#planets > 0 and table.concat(planets, ', ') or 'ninguno'))
-end
-local function propertiesMatching(object, pattern)
-    local matches = {}
-    pcall(function()
-        local class = object:GetClass()
-        for _ = 1, 10 do
-            if not isValid(class) then break end
-            class:ForEachProperty(function(property)
-                local nameOk, propertyName = pcall(function() return property:GetFName():ToString() end)
-                if nameOk and propertyName:lower():find(pattern) then matches[#matches + 1] = propertyName .. ' (' .. propertyTypeName(property) .. ')' end
-                if #matches > 30 then return true end
-            end)
-            class = class:GetSuperStruct()
-        end
-    end)
-    return matches
-end
-local categoryDiagnosticsCount = 0
-local CATEGORY_PROPERTY_TYPES = {ByteProperty = true, EnumProperty = true, IntProperty = true, BoolProperty = true, NameProperty = true, ObjectProperty = true}
-local function logCategoryDiagnostics(eventDefinition)
-    if categoryDiagnosticsCount >= 8 then return end
-    categoryDiagnosticsCount = categoryDiagnosticsCount + 1
-    local found = {}
-    for _, match in ipairs(propertiesMatching(eventDefinition, '')) do
-        local propertyName, propertyType = match:match('^(%S+) %((%S+)%)$')
-        local lowerName = propertyName and propertyName:lower() or ''
-        if propertyType and CATEGORY_PROPERTY_TYPES[propertyType] and (lowerName:find('categ') or lowerName:find('type') or lowerName:find('mode')
-            or lowerName:find('tag') or lowerName:find('filter') or lowerName:find('kind') or lowerName:find('group')) then
-            local readOk, value = pcall(function() return eventDefinition[propertyName] end)
-            local text = '?'
-            if readOk then
-                if type(value) == 'number' or type(value) == 'boolean' then text = tostring(value)
-                elseif propertyType == 'NameProperty' then
-                    local nameOk, nameText = pcall(function() return value:ToString() end); text = nameOk and nameText or '?'
-                elseif propertyType == 'ObjectProperty' then text = isValid(value) and (fullName(value):gsub('^%S+ ', '')) or 'ninguno' end
-            end
-            found[#found + 1] = propertyName .. ' (' .. propertyType .. ') = ' .. tostring(text)
-        end
-    end
-    log('Diagnóstico categoría · ' .. (fullName(eventDefinition):gsub('^%S+ ', '')) .. ': ' .. (#found > 0 and table.concat(found, ', ') or 'nada parecido'))
-end
-local function logPlanetDiagnostics(eventDefinition, trackDefinition)
-    if planetDiagnosticsDone then return end
-    planetDiagnosticsDone = true
-    log('Diagnóstico planeta · evento ' .. fullName(eventDefinition):gsub('^%S+ ', '') .. ': ' .. table.concat(propertiesMatching(eventDefinition, 'planet'), ', '))
-    if isLiveObject(trackDefinition) then
-        log('Diagnóstico planeta · pista: ' .. table.concat(propertiesMatching(trackDefinition, 'planet'), ', '))
-        for _, match in ipairs(propertiesMatching(trackDefinition, 'planet')) do
-            local propertyName, propertyType = match:match('^(%S+) %((%S+)%)$')
-            if propertyType == 'ObjectProperty' then
-                local readOk, planetDefinition = pcall(function() return trackDefinition[propertyName] end)
-                if readOk and isLiveObject(planetDefinition) then
-                    local texts = {}
-                    for _, planetMatch in ipairs(propertiesMatching(planetDefinition, '')) do
-                        local textName, textType = planetMatch:match('^(%S+) %((%S+)%)$')
-                        if textType and TEXT_PROPERTY_TYPES[textType] then
-                            texts[#texts + 1] = textName .. ' (' .. textType .. ') = "' .. readAssetText(planetDefinition, {textName}) .. '"'
-                        end
-                    end
-                    log('Diagnóstico planeta · ' .. fullName(planetDefinition):gsub('^%S+ ', '') .. ': ' .. table.concat(texts, ', '))
-                end
-            end
-        end
-    end
-end
 -- Name, planet, planet codename and category of an event definition (remembered per event)
 local function readEventNames(eventDefinition)
     local key = fullName(eventDefinition)
@@ -3642,8 +3371,6 @@ local function readEventNames(eventDefinition)
     local eventName = readAssetText(eventDefinition, {'PlayerFacingName'})
     local planet = ''
     local trackOk, trackDefinition = pcall(function() return eventDefinition.TrackDef end)
-    if trackOk then pcall(logPlanetDiagnostics, eventDefinition, trackDefinition) end
-    pcall(logCategoryDiagnostics, eventDefinition)
     -- The track keeps its planet as a path (SoftObject), which is not read: the codename comes from the
     -- path of the track itself (.../Planets/Dalmatian/...) and the name from the PlanetDef the game has loaded.
     local planetCodename = trackOk and isLiveObject(trackDefinition) and fullName(trackDefinition):match('/Planets/([%w_]+)/') or ''
@@ -3651,20 +3378,10 @@ local function readEventNames(eventDefinition)
         local planetCode = (fullName(eventDefinition):match('([%w_]+)$') or ''):match('^EVT_ARC_%u+_%u+_(%u%u%u)_')
         planetCodename = PLANET_CODENAMES[planetCode or ''] or ''
     end
-    if not loadedPlanetsLogged then pcall(logLoadedPlanets) end
     if planetCodename ~= '' then
         local findOk, planetDefinition = pcall(StaticFindObject, '/Game/Griffin/Gameplay/Config/Planets/PLA_' .. planetCodename .. '.PLA_' .. planetCodename)
         if findOk and isLiveObject(planetDefinition) then
             planet = readAssetText(planetDefinition, {'PlayerFacingName', 'DisplayName', 'PlanetName', 'Title'})
-            if not planetNameDiagnosticsDone then
-                planetNameDiagnosticsDone = true
-                local texts = {}
-                for _, match in ipairs(propertiesMatching(planetDefinition, '')) do
-                    local textName, textType = match:match('^(%S+) %((%S+)%)$')
-                    if textType and TEXT_PROPERTY_TYPES[textType] then texts[#texts + 1] = textName .. ' = "' .. readAssetText(planetDefinition, {textName}) .. '"' end
-                end
-                log('Diagnóstico planeta · PLA_' .. planetCodename .. ': ' .. (#texts > 0 and table.concat(texts, ', ') or 'sin textos'))
-            end
         end
     end
     -- If the game has not loaded the podracing planet, Tatooine from its code (BGL)
@@ -3863,19 +3580,6 @@ LoopInGameThreadWithDelay(SAMPLE_INTERVAL_MS, function()
         end
     end
 end)
--- Record search with Ctrl+Shift+K, registered in UE4SS so it also works in the menus
-if type(RegisterKeyBind) == 'function' and Key and Key.K and ModifierKey then
-    local ok, err = pcall(function()
-        RegisterKeyBind(Key.K, {ModifierKey.CONTROL, ModifierKey.SHIFT}, function()
-            local runSearch = function()
-                log('Buscando récords en el juego (puede tardar unos segundos)...')
-                local searchOk, searchError = runGuarded('record_search', searchGameForRecords)
-                if not searchOk then log('Búsqueda de récords fallida: ' .. tostring(searchError)) end
-            end
-            if type(ExecuteInGameThread) == 'function' then ExecuteInGameThread(runSearch) else runSearch() end
-        end)
-    end)
-    if not ok then log('No se pudo registrar Ctrl+Shift+K: ' .. tostring(err)) end
-end
 
-log('READY v' .. VERSION .. '. Ctrl+F9 pausa/reanuda la grabación, Ctrl+F10 muestra/oculta el panel, Ctrl+Shift+K busca tus récords. Archivos en la carpeta del mod.')
+
+log('READY v' .. VERSION .. '. Ctrl+F9 pausa/reanuda la grabación, Ctrl+F10 muestra/oculta el panel. Archivos en la carpeta del mod.')
