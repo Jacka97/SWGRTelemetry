@@ -94,6 +94,16 @@ func maintainTelemetry(modFolder string, settings appSettings, logf func(string,
 				}
 				continue
 			}
+			// Intentos sin terminar (reinicios, 0.9.31): solo cuentan las carreras completas; su resumen se queda
+			// (el intento cuenta) y su telemetría se borra. El mod ya no la guarda; esto limpia los de antes.
+			if session.Incomplete && strings.HasPrefix(session.Event, "LDB_ARC") {
+				if info, err := os.Stat(path); err == nil && time.Since(info.ModTime()) > 10*time.Minute {
+					if os.Remove(path) == nil {
+						logf("Telemetría del intento sin terminar %s %s eliminada", session.Event, session.ID)
+					}
+				}
+				continue
+			}
 			kept++
 			if kept > limit && !alwaysKept[session] {
 				if err := os.Remove(path); err == nil {
@@ -140,7 +150,7 @@ func protectedSessions(sessions []*Session) []*Session {
 		}
 	}
 	for _, session := range sessions {
-		if session.HasBuild || session.TelemetryFile == "" {
+		if session.HasBuild || session.TelemetryFile == "" || session.Incomplete {
 			continue
 		}
 		note("total", session.Total, session)

@@ -2,7 +2,10 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -108,4 +111,67 @@ func translateAppSettings(modFolder string) {
 		}
 	}
 	os.WriteFile(path, []byte(appSettingsText+"attempts_to_keep="+attempts+"\ncompress="+compress+"\n"), 0644)
+}
+
+// ---------- Panel en carrera: timing_panel.ini del mod (clave=valor, con comentarios «;») ----------
+
+// timingPanelKeys: las claves que la app puede cambiar, en el orden en que se escriben
+var timingPanelKeys = []string{"enabled", "style", "x", "y", "scale", "opacity", "last_lap", "best_lap", "ideal_lap", "event_total", "target",
+	"previous_sectors", "compare_with", "live_difference", "sector_bars", "speeds", "forecast",
+	"color_background", "color_top_bar", "color_title", "color_label", "color_text", "color_dim", "color_best", "color_better", "color_worse", "color_gain", "color_loss"}
+
+var timingPanelValue = regexp.MustCompile(`^[#A-Za-z0-9._-]{0,16}$`)
+
+func readTimingPanel(path string) map[string]string {
+	values := map[string]string{}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return values
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, ";") {
+			continue
+		}
+		if key, value, found := strings.Cut(line, "="); found {
+			values[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+	}
+	return values
+}
+
+// saveTimingPanel junta los valores nuevos con los del archivo y lo vuelve a escribir con su explicación
+func saveTimingPanel(path string, changes map[string]string) error {
+	allowed := map[string]bool{}
+	for _, key := range timingPanelKeys {
+		allowed[key] = true
+	}
+	values := readTimingPanel(path)
+	for key, value := range changes {
+		if !allowed[key] || !timingPanelValue.MatchString(value) {
+			return fmt.Errorf("valor no válido: %s", key)
+		}
+		values[key] = value
+	}
+	var text strings.Builder
+	text.WriteString("; Panel de tiempos del mod SWGR Telemetry · timing panel of the SWGR Telemetry mod\n")
+	text.WriteString("; Se cambia desde la app (Opciones > Panel en carrera) y se aplica en la siguiente carrera\n")
+	text.WriteString("; style: sith o compact · x, y: posición de 0 a 1 (0,0 = arriba a la izquierda) · scale: tamaño · opacity: fondo de 0 a 1\n")
+	text.WriteString("; color_*: colores en #RRGGBB (vacío = los del estilo; color_top_bar=none quita la barra de arriba)\n")
+	written := map[string]bool{}
+	for _, key := range timingPanelKeys {
+		if value, found := values[key]; found {
+			text.WriteString(key + "=" + value + "\n")
+			written[key] = true
+		}
+	}
+	for key, value := range values { // las que no conoce la app se conservan
+		if !written[key] {
+			text.WriteString(key + "=" + value + "\n")
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(text.String()), 0644)
 }

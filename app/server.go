@@ -243,6 +243,30 @@ func (app *server) routes() *http.ServeMux {
 		}
 		writeJSON(writer, map[string]any{"ok": true})
 	}))
+	// Panel en carrera (timing_panel.ini del mod): GET devuelve sus valores; POST cambia los que lleve
+	mux.HandleFunc("/api/timing-panel", func(writer http.ResponseWriter, request *http.Request) {
+		path := modFilePath(app.modFolder, "timing_panel.ini")
+		if request.Method == http.MethodGet {
+			writeJSON(writer, map[string]any{"values": readTimingPanel(path)})
+			return
+		}
+		if request.Method != http.MethodPost {
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var save struct {
+			Values map[string]string `json:"values"`
+		}
+		if err := json.NewDecoder(io.LimitReader(request.Body, 1<<16)).Decode(&save); err != nil {
+			http.Error(writer, "invalid data", http.StatusBadRequest)
+			return
+		}
+		if err := saveTimingPanel(path, save.Values); err != nil {
+			http.Error(writer, "No se pudo guardar / could not save: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(writer, map[string]any{"ok": true})
+	})
 	// Pilot files: export yours, add or remove your friends'
 	mux.HandleFunc("/api/export-pilot", onlyPost(func(writer http.ResponseWriter, request *http.Request) {
 		content, _ := io.ReadAll(io.LimitReader(request.Body, 32<<20))

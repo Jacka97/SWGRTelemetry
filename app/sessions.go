@@ -20,6 +20,13 @@ type Lap struct {
 	Valid    bool      `json:"valid"`
 	Incident bool      `json:"incident"`
 	Official bool      `json:"official"`
+	// Arranque lanzado: el tiempo es el total (desde el GO) y OfficialLap, la vuelta oficial (desde la puerta)
+	Rolling     bool    `json:"rolling,omitempty"`
+	OfficialLap float64 `json:"officialLap,omitempty"`
+	// Bonificación de tiempo (Precisión): el tiempo ya la lleva descontada; TrackTime es el tiempo en pista
+	BonusEvent bool    `json:"bonusEvent,omitempty"`
+	Bonus      float64 `json:"bonus,omitempty"`
+	TrackTime  float64 `json:"trackTime,omitempty"`
 }
 
 type Session struct {
@@ -36,6 +43,8 @@ type Session struct {
 	Laps            []Lap   `json:"laps"`
 	Total           float64 `json:"total"`
 	TotalCalculated bool    `json:"totalCalculated"`
+	// Intento sin terminar (reinicio): cuenta como intento, pero no para los mejores ni el ideal
+	Incomplete bool `json:"incomplete,omitempty"`
 	Target          float64 `json:"target"`
 	TargetPlayer    string  `json:"targetPlayer"`
 	Success         *bool   `json:"success"`
@@ -48,6 +57,8 @@ type Session struct {
 var (
 	summaryLapLine      = regexp.MustCompile(`^Vuelta (\d+): (\d+):(\d+\.\d+)`)
 	summarySector       = regexp.MustCompile(`S(\d+) (\d+\.\d+)`)
+	summaryRollingStart = regexp.MustCompile(`arranque lanzado: vuelta oficial (\d+):(\d+\.\d+)`)
+	summaryBonus        = regexp.MustCompile(`precisión: en pista (\d+):(\d+\.\d+), bonificación -(\d+\.\d+)`)
 	summaryHeaderLine   = regexp.MustCompile(`^== (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| ([^|]+) \|.*\| v([\d.]+) \|`)
 	summaryEventLine    = regexp.MustCompile(`^Evento: (LDB_[A-Za-z0-9_]+) \| modo: ([^|]*)\| vueltas: (\d+)`)
 	summaryResultLine   = regexp.MustCompile(`^Evento: (\d+):(\d+\.\d+)(?: \| objetivo (\d+):(\d+\.\d+) \(([^)]*)\) \| [+-]\d+\.\d+)?(?: \| (Conseguido|No conseguido))?`)
@@ -109,6 +120,16 @@ func parseSummary(path string, session *Session) {
 			}
 			lap.Valid = !strings.Contains(notes, "no válidos") && !strings.Contains(notes, "salida parada") && len(lap.Sectors) > 0
 			lap.Incident = strings.Contains(notes, "incidente")
+			if rolling := summaryRollingStart.FindStringSubmatch(notes); rolling != nil {
+				lap.Rolling, lap.OfficialLap = true, minutesAndSeconds(rolling[1], rolling[2])
+			}
+			if bonus := summaryBonus.FindStringSubmatch(notes); bonus != nil {
+				lap.BonusEvent, lap.TrackTime = true, minutesAndSeconds(bonus[1], bonus[2])
+				lap.Bonus, _ = strconv.ParseFloat(bonus[3], 64)
+			}
+			if strings.Contains(notes, "arranque lanzado sin GO") {
+				lap.Valid, lap.Official = false, false   // sin GO no hay total: no cuenta para los mejores
+			}
 			session.Laps = append(session.Laps, lap)
 		}
 	}
@@ -257,11 +278,19 @@ func scanSessions(modFolder string) []*Session {
 			for _, lap := range session.Laps {
 				sum += lap.Time
 				allOfficial = allOfficial && lap.Official
+				// Precisión de antes de la bonificación: la suma de vueltas no descuenta los puntos, no vale como total
+				if strings.Contains(session.Event, "_PRE_") && !lap.BonusEvent {
+					allOfficial = false
+				}
 			}
 			if allOfficial {
 				session.Total = sum
 				session.TotalCalculated = true
 			}
+		}
+		// Sin terminar: le faltan vueltas y no tiene total (los de antes de la 0.9.31 no llevan la línea del reinicio)
+		if session.Total == 0 && session.PlannedLaps > 0 && len(session.Laps) < session.PlannedLaps {
+			session.Incomplete = true
 		}
 	}
 	sort.Slice(sessions, func(i, j int) bool { return sessions[i].ID > sessions[j].ID })

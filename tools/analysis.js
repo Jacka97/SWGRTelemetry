@@ -23,21 +23,43 @@ function parseRouteCsv(text) {
 
 // The session CSV: one sample per row. The columns are looked up by name, with the English names
 // of 0.9.18 or the Spanish ones of the earlier versions.
-function parseSessionCsv(text) {
+// Tipo de vehículo según el nombre del evento: CAR, BIKE, SKIMMER o PLANE (como en el mod)
+function vehicleTypeOfEvent(eventId) {
+  const match = /_(CAR|BIKE|SKIMMER|PLANE)_/.exec(eventId || '');
+  return match ? match[1] : '';
+}
+// Estela blanca (el «cuadrado») y freno de cada muestra: W, B, WB o '' (como la columna 9 del fantasma).
+// Coche: derrape; rasante: canto; vaina: aerofreno; moto: la carga y suelta del freno de energía.
+// En la moto, el frenado mientras cargas es parte del cuadrado y no cuenta como freno.
+function trailCodeOf(vehicleType, value) {
+  const active = name => value(name) > 0;
+  const white = vehicleType === 'CAR' ? active('drifting') : vehicleType === 'SKIMMER' ? active('knifing')
+    : vehicleType === 'PLANE' ? active('air_brake_scale') : vehicleType === 'BIKE' ? active('energy_brake_state') : false;
+  const braking = active('brake') && !(vehicleType === 'BIKE' && white);
+  return (white ? 'W' : '') + (braking ? 'B' : '');
+}
+function parseSessionCsv(text, vehicleType) {
   const lines = text.split(/\r?\n/);
   const header = lines[0].split(',');
   const columnOf = (...names) => names.map(name => header.indexOf(name)).find(index => index >= 0) ?? -1;
   const timeColumn = columnOf('time', 't'), distanceColumn = columnOf('distance', 'dist'), xColumn = columnOf('x'), yColumn = columnOf('y');
   const zColumn = columnOf('z'), headingColumn = columnOf('heading', 'rumbo');
   const speedColumn = columnOf('kmh'), eventColumn = columnOf('event', 'evento'), boostColumn = columnOf('boost');   // boost: from mod 0.9.25 on
+  // estado del vehículo (desde la 0.9.31): estela blanca y freno
+  const stateColumns = {};
+  for (const name of ['brake', 'drifting', 'knifing', 'air_brake_scale', 'energy_brake_state']) stateColumns[name] = header.indexOf(name);
+  const hasState = header.indexOf('brake') >= 0;
   const samples = [];
   for (let index = 1; index < lines.length; index++) {
     const columns = lines[index].split(',');
     if (columns.length < 15) continue;
     const events = columns[eventColumn] || '';
     samples.push({ time: +columns[timeColumn], distance: +columns[distanceColumn], x: +columns[xColumn], y: +columns[yColumn], speed: +columns[speedColumn],
-      official: events.includes('OFFICIAL') || events.includes('OFICIAL'), reset: events.includes('RESET') || events.includes('RETROCESO'),
+      // bonificación ganada en esta muestra (Precisión): marcas BONUS+1.500
+      bonus: events.split(' ').filter(token => token.startsWith('BONUS')).reduce((sum, token) => sum + (parseFloat(token.slice(5)) || 0), 0),
+      official: events.includes('OFFICIAL') || events.includes('OFICIAL'), go: events.split(' ').includes('GO'), started: events.includes('START'), reset: events.includes('RESET') || events.includes('RETROCESO'),
       boost: boostColumn >= 0 ? (columns[boostColumn] || '') : '',
+      trail: hasState ? trailCodeOf(vehicleType, name => +(columns[stateColumns[name]] || 0)) : '',
       z: zColumn >= 0 ? +columns[zColumn] : NaN, heading: headingColumn >= 0 ? +columns[headingColumn] : NaN });
   }
   return samples;
@@ -74,7 +96,9 @@ function detectDirection(route, samples) {
   return forward >= backward ? 1 : -1;
 }
 
-function analyzeSession(route, samples, name) {
+// rolling (opcional): arranque lanzado, { total, officialLap } del resumen. La vuelta va del GO a la
+// meta, la puerta cierra el S1 y los checkpoints de la carrerilla no cuentan.
+function analyzeSession(route, samples, name, rolling) {
   const length = routeLength(route);
   const direction = detectDirection(route, samples);
   // Checkpoint gates: position, distance in the driving direction and direction of the route
@@ -167,34 +191,60 @@ function analyzeSession(route, samples, name) {
   const isPointToPoint = Math.hypot(lastPoint[1] - firstPoint[1], lastPoint[2] - firstPoint[2]) > 2000 && finishCheckpoint !== null;
   let startCheckpoint = null;
   if (isPointToPoint) startCheckpoint = checkpointDistances.map((_, checkpoint) => checkpoint).find(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] < finishDistance) ?? null;
-  const originDistance = startCheckpoint !== null ? checkpointDistances[startCheckpoint] : finishDistance;
-  const sectorCheckpoints = checkpointDistances.map((_, checkpoint) => checkpoint).filter(checkpoint => checkpoint !== finishCheckpoint && checkpoint !== startCheckpoint);
+  let originDistance = startCheckpoint !== null ? checkpointDistances[startCheckpoint] : finishDistance;
+  let sectorCheckpoints = checkpointDistances.map((_, checkpoint) => checkpoint).filter(checkpoint => checkpoint !== finishCheckpoint && checkpoint !== startCheckpoint);
+  // Arranque lanzado: el GO es el total antes de la meta (o la marca GO del CSV) y la puerta, la vuelta oficial antes
+  let rollingSpan = null;
+  if (isPointToPoint && rolling && finishTimes.length) {
+    const end = finishTimes[0];
+    const goMarker = samples.find(sample => sample.go);
+    const goTime = rolling.total > 0 ? end - rolling.total : (goMarker ? goMarker.time : null);
+    const gateTime = rolling.officialLap > 0 ? end - rolling.officialLap : null;
+    const gate = gateTime === null ? null : crossings.filter(crossing => crossing.checkpoint !== finishCheckpoint && Math.abs(crossing.time - gateTime) < 0.5)
+      .sort((first, second) => Math.abs(first.time - gateTime) - Math.abs(second.time - gateTime))[0];
+    if (goTime !== null && gate) {
+      // Donde arrancas: la primera muestra desde el GO, ya con la salida registrada (antes la distancia no tiene sentido de marcha)
+      const startedIndex = Math.max(0, samples.findIndex(sample => sample.started));
+      const goSample = samples.find((sample, index) => index >= startedIndex && sample.time >= goTime) || samples[startedIndex];
+      startCheckpoint = gate.checkpoint;
+      originDistance = goSample.distance;
+      const gateDistance = checkpointDistances[gate.checkpoint];
+      sectorCheckpoints = [gate.checkpoint].concat(checkpointDistances.map((_, checkpoint) => checkpoint)
+        .filter(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] > gateDistance));
+      rollingSpan = [goTime, end];
+    }
+  }
   const sectorCount = sectorCheckpoints.length + 1;
   const sectorStarts = sectorCheckpoints.map(checkpoint => (checkpointDistances[checkpoint] - originDistance + length) % length).sort((first, second) => first - second);
   const spans = [];
-  if (startCheckpoint !== null) {
+  if (rollingSpan) spans.push(rollingSpan);
+  else if (startCheckpoint !== null) {
     const startTimes = crossings.filter(crossing => crossing.checkpoint === startCheckpoint).map(crossing => crossing.time);
     for (const end of finishTimes) {
       const start = startTimes.filter(time => time < end).pop();
       if (start !== undefined) spans.push([start, end]);
     }
   } else for (let index = 1; index < finishTimes.length; index++) spans.push([finishTimes[index - 1], finishTimes[index]]);
+  // Bonificación (Precisión): lo que se descuenta entre dos momentos
+  const bonusSamples = samples.filter(sample => sample.bonus);
+  const bonusBetween = (from, to) => bonusSamples.reduce((sum, sample) => sample.time > from && sample.time <= to ? sum + sample.bonus : sum, 0);
   const laps = [];
   for (const [start, end] of spans) {
-    const time = end - start;
-    if (time < 5 || time > 900) continue;
+    if (end - start < 5 || end - start > 900) continue;
+    const lapBonus = bonusBetween(start, end);
+    const time = end - start - lapBonus;
     const firstCrossing = {};
     let repeatedCrossings = 0;
     for (const crossing of crossings) {
-      if (crossing.checkpoint === finishCheckpoint || crossing.checkpoint === startCheckpoint || crossing.time <= start + 0.25 || crossing.time >= end - 0.25) continue;
+      if (!sectorCheckpoints.includes(crossing.checkpoint) || crossing.time <= start + 0.25 || crossing.time >= end - 0.25) continue;
       if (firstCrossing[crossing.checkpoint] !== undefined) repeatedCrossings++; else firstCrossing[crossing.checkpoint] = crossing.time;
     }
     const sectorEnds = Object.values(firstCrossing).sort((first, second) => first - second);
     const allSectors = sectorEnds.length === sectorCount - 1;
     const sectors = [];
     let sectorStart = start;
-    for (const sectorEnd of sectorEnds) { sectors.push(sectorEnd - sectorStart); sectorStart = sectorEnd; }
-    sectors.push(end - sectorStart);
+    for (const sectorEnd of sectorEnds) { sectors.push(sectorEnd - sectorStart - bonusBetween(sectorStart, sectorEnd)); sectorStart = sectorEnd; }
+    sectors.push(end - sectorStart - bonusBetween(sectorStart, end));
     const official = officialTimes.some(officialTime => Math.abs(officialTime - end) < 1.0);
     const incident = repeatedCrossings > 0 || resetTimes.some(resetTime => resetTime > start && resetTime <= end);
     // Trace: distance from the finish line and lap time
@@ -208,12 +258,12 @@ function analyzeSession(route, samples, name) {
         if (sample.time - start < 2 && lapDistance > 0.8 * length) lapDistance -= length;
         if (end - sample.time < 2 && lapDistance < 0.2 * length) lapDistance += length;
       }
-      trace.push({ distance: lapDistance, time: sample.time - start, x: sample.x, y: sample.y, speed: sample.speed, boost: sample.boost || '', z: sample.z, heading: sample.heading });
+      trace.push({ distance: lapDistance, time: sample.time - start - bonusBetween(start, sample.time), x: sample.x, y: sample.y, speed: sample.speed, boost: sample.boost || '', trail: sample.trail || '', z: sample.z, heading: sample.heading });
     }
-    laps.push({ session: name, number: laps.length + 1, start, end, time, sectors: allSectors ? sectors : null,
+    laps.push({ session: name, number: laps.length + 1, start, end, time, bonus: lapBonus, sectors: allSectors ? sectors : null,
       measuredSectors: sectors, official, incident, trace });
   }
-  return { name, direction, routeLength: length, finishDistance, finishCheckpoint, startCheckpoint, isPointToPoint, originDistance,
+  return { name, direction, routeLength: length, finishDistance, finishCheckpoint, startCheckpoint, isPointToPoint, originDistance, rolling: !!rollingSpan,
     span: isPointToPoint ? finishDistance - originDistance : length, sectorCount, sectorStarts, laps };
 }
 
@@ -249,4 +299,4 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   return series;
 }
 
-if (typeof module !== 'undefined') module.exports = { parseRouteCsv, parseSessionCsv, unpackSamples, analyzeSession, deltaSeries, timeAtDistance, interpolate };
+if (typeof module !== 'undefined') module.exports = { vehicleTypeOfEvent, parseRouteCsv, parseSessionCsv, unpackSamples, analyzeSession, deltaSeries, timeAtDistance, interpolate };
