@@ -1,0 +1,70 @@
+/* Top bar: the brand takes you home; the buttons carry an icon and a label */
+.home-link { cursor: pointer; text-decoration: none; color: inherit; font-size: 1.22rem; gap: 14px; padding: 4px 8px 4px 0; transition: color .15s, text-shadow .15s; }
+.home-link:hover { color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent); }
+.home-link small { font-size: 0.82rem; }
+.home-link .saber { width: 74px; height: 12px; }
+.home-link .saber .hilt { width: 20px; height: 10px; }
+.home-link .saber .blade { height: 4px; }
+.top-button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; }
+.top-button svg { width: 19px; height: 19px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.top-button .pilot-dot { width: 11px; height: 11px; margin-right: 0; }
+.top-button b { color: var(--accent); }
+.mode-button span { opacity: .55; }
+.mode-button span.chosen { opacity: 1; color: var(--accent); font-weight: 700; }
+.options-button { padding: 8px 11px; }
+.options-button svg { width: 21px; height: 21px; }
+.top-button.language-button { padding: 8px 14px; }
+/* In narrower windows the bar keeps every button: first the decorations go, then the labels (the icons stay) */
+@media (max-width: 1600px) { .topbar .brand .aurebesh { display: none; } .topbar { gap: 10px; } }
+@media (max-width: 1500px) { .home-link small { display: none; } .topbar .live > span { display: none; } }
+/* Barra de arriba sin apreturas: sin ruta (el evento ya sale en su cabecera y el botón Arcade vuelve al inicio),
+   el logo solo con "Telemetría" y el indicador de lectura solo con su punto (el texto, en el título al pasar el ratón) */
+.topbar .breadcrumbs, .topbar .brand small, .topbar .brand .aurebesh, .topbar .live > span { display: none; }
+/* El idioma se cambia en Opciones (Apariencia de la app); los botones de la barra, más compactos */
+.topbar .language-button { display: none; }
+.topbar .top-button { padding: 6px 11px; font-size: 0.74rem; gap: 6px; }
+.topbar .top-button svg { width: 17px; height: 17px; }
+@media (max-width: 1300px) { .top-button .top-label { display: none; } }
+/* Simple mode: the parts of the full analysis are hidden */
+html.mode-simple .tryhard-only { display: none !important; }
+html:not(.mode-simple) .simple-only { display: none !important; }
+html.mode-simple .event-figures { grid-template-columns: repeat(2, 1fr); }
+html.mode-simple .event-figures .figure:nth-child(3) { display: none; }
+/* Vehicle icons next to every event, and the planet illustration on top of each card */
+.vehicle-icon { width: 1.7em; height: 1.7em; vertical-align: -0.55em; margin-right: 0.35em; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.event-art { position: relative; margin: -16px -16px 0; height: 96px; overflow: hidden; border-bottom: 1px solid var(--line); }
+.event-art svg.planet-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.event-art .vehicle-icon { position: absolute; right: 10px; bottom: 8px; width: 34px; height: 34px; margin: 0; padding: 5px; color: #fff; background: rgba(0, 0, 0, .45); border-radius: 50%; stroke-width: 1.5; }
+.event-card:hover .event-art svg.planet-art { transform: scale(1.04); }
+.event-art svg.planet-art { transition: transform .35s ease; }
+/* Panels with cut corners: the border is drawn with a gradient under a mask */
+.panel, .event-card, .tile { position: relative; background: linear-gradient(180deg, var(--surface), var(--panel)); border: 1px solid var(--line); border-radius: 0;
+  clip-path: polygon(var(--corner-cut) 0, 100% 0, 100% calc(100% - var(--corner-cut)), calc(100% - var(--corner-cut)) 100%, 0 100%, 0 var(--corner-cut)); }
+.panel::before, .event-card::before, .tile::before { content: ""; position: absolute; top: 0; left: var(--corner-cut); width: 46px; height: 2px;
+  background: var(--accent); box-shadow: var(--glow); opacity: .85; }
+.panel { padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* Folding a panel: only its header stays */
+.panel.folded > :not(.panel-header) { display: none !important; }
+.fold-button { margin-left: auto; order: 99; background: none; border: 1px solid var(--line-strong); color: var(--text-muted); font-size: 0.9rem; line-height: 1; padding: 3px 7px; cursor: pointer; }
+.fold-button:hover { color: var(--text); border-color: var(--accent); }
+main > .panel-header { padding: 4px 2px; }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-family: var(--aurebesh-font) var(--font-display); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); border-bottom-color: var(--line-strong); }
+th:first-child, td:first-child { text-align: left; }
+td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+td.text { font-family: var(--aurebesh-font) var(--font-body); }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--surface-hover); }
+.best { color: var(--best); font-weight: 600; text-shadow: 0 0 10px rgba(179, 130, 255, .35); }
+.gain { color: var(--gain); }
+.loss { color: var(--loss); }
+.tag { font-family: var(--aurebesh-font) var(--font-display); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; border-radius: 0; padding: 1px 6px; border: 1px solid var(--line); color: var(--text-muted); margin-left: 6px; }
+.tag.success { color: var(--gain); border-color: color-mix(in srgb, var(--gain) 45%, transparent); }
+.tag.failure { color: var(--loss); border-color: color-mix(in srgb, var(--loss) 45%, transparent); }
+.tag.highlight { color: var(--best); border-color: color-mix(in srgb, var(--best) 45%, transparent); }
+.empty-state { padding: 30px; text-align: center; color: var(--text-muted); display: grid; gap: 8px; justify-items: center; }
+.empty-state b { color: var(--text); font-family: var(--aurebesh-font) var(--font-display); font-size: 1.1rem; letter-spacing: 0.1em; text-transform: uppercase; }
+

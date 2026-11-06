@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telemetría Galactic Racer</title>
+<style>
+/* @include css */
+</style>
+</head>
+<body>
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader-saber" aria-hidden="true"><span class="loader-hilt"></span><span class="loader-track"><span class="loader-blade" id="loaderBlade"></span></span></div>
+  <div class="loader-title">Telemetría</div>
+  <div class="loader-step" id="loaderStep">Leyendo tus carreras…</div>
+</div>
+<div class="app">
+  <div class="topbar">
+    <a class="brand home-link" data-navigate="home" href="#" title="Volver al inicio"><span class="saber" aria-hidden="true"><span class="hilt"></span><span class="blade"></span></span>Telemetría <small>Galactic Racer</small><span class="aurebesh">telemetria</span></a>
+    <nav class="breadcrumbs" id="breadcrumbs"></nav>
+    <span class="busy" aria-hidden="true"></span>
+    <span class="spacer"></span>
+    <button type="button" class="button top-button" data-navigate="home" id="arcadeButton" title="Lista de eventos de Arcade"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7"/><rect x="13.5" y="3.5" width="7" height="7"/><rect x="3.5" y="13.5" width="7" height="7"/><rect x="13.5" y="13.5" width="7" height="7"/></svg><span class="top-label">Arcade</span></button>
+    <button type="button" class="button top-button" id="importButton" title="Añade los archivos .swgr de tus amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg><span class="top-label">Importar tiempos</span></button>
+    <input type="file" id="pilotFileInput" accept=".swgr" multiple hidden>
+    <button type="button" class="button top-button" data-navigate="social" id="socialButton" title="Compárate con tus amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.9-3.6 3.4-5.6 6.5-5.6s5.6 2 6.5 5.6"/><circle cx="17" cy="9" r="2.7"/><path d="M16.5 14.4c2.6.1 4.4 1.9 5 4.8"/></svg><span class="top-label">Social</span></button>
+    <button type="button" class="button top-button options-button" data-navigate="options" id="optionsButton" title="Perfil, archivos de piloto y ajustes de la app"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span class="top-label">Opciones</span></button>
+    <button type="button" class="button top-button mode-button" id="modeButton" title="Modo simple (lo esencial) o tryhard (todo el análisis)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17a8.5 8.5 0 1 1 17 0"/><path d="M12 17l4.5-6"/><circle cx="12" cy="17" r="1.4"/></svg><span data-mode="simple">Simple</span><span data-mode="tryhard">Tryhard</span></button>
+    <button type="button" class="button top-button language-button" id="languageButton" title="Cambiar el idioma de la app"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.5 3.8 5.5 3.8 9s-1.2 6.5-3.8 9c-2.6-2.5-3.8-5.5-3.8-9S9.4 5.5 12 3z"/></svg><span id="languageNames"><b>ES</b>&nbsp;·&nbsp;EN&nbsp;·&nbsp;Aurebesh</span></button>
+    <span class="live" id="liveIndicator" title="Se actualiza sola al terminar cada evento"><i></i><span>Leyendo tus archivos</span></span>
+  </div>
+  <div class="notices" id="notices" role="status"></div>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="hologram-band" aria-hidden="true"></div>
+<div class="page-loading" id="pageLoading" aria-hidden="true">Cargando telemetría…</div>
+
+<script>
+__ANALYSIS__
+</script>
+<script>
+// @include js
+</script>
+</body>
+</html>

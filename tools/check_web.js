@@ -83,7 +83,7 @@ for (const value of [Array.prototype, String.prototype, Number.prototype, Object
   for (const name of Object.getOwnPropertyNames(value)) builtins.add(name);
 const DOM_FIELDS = 'id target classList dataset innerHTML textContent value checked disabled hidden style background width height options files types relatedTarget clientX currentTarget dataTransfer key ' +
   'documentElement body fonts family status ready offsetWidth scrollY devicePixelRatio FontFace getElementById querySelector querySelectorAll closest addEventListener setAttribute insertAdjacentHTML ' +
-  'getBoundingClientRect getContext scrollIntoView focus blur contentEditable onclick onblur onkeydown selectAllChildren getSelection preventDefault stopPropagation reload text json ok ' +
+  'getBoundingClientRect getContext offsetHeight offsetLeft offsetTop clientWidth clientY setPointerCapture pointerId removeEventListener scrollIntoView click focus blur contentEditable onclick onblur onkeydown selectAllChildren getSelection preventDefault stopPropagation reload text json ok ' +
   'beginPath moveTo lineTo stroke fill arc closePath fillText fillRect measureText clearRect save restore setTransform setLineDash createLinearGradient addColorStop strokeStyle fillStyle lineWidth ' +
   'lineCap lineJoin globalAlpha font textAlign textBaseline shadowColor shadowBlur filter left top escape load observe getPropertyValue isReferencedIdentifier now getItem setItem ' +
   'toggle add remove contains __swgrReload SWGR redraw module exports message scrollTo toISOString children parentElement';

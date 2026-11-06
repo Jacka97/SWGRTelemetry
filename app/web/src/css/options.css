@@ -1,0 +1,49 @@
+/* ---------- Página de Opciones ---------- */
+.options-page { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.options-page > .panel-header { grid-column: 1 / -1; }
+.options-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 84px; }
+.options-nav button { text-align: left; padding: 10px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--text-muted); font: inherit; cursor: pointer; }
+.options-nav button:hover { color: var(--text); }
+.options-nav button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.options-content { min-width: 0; }
+.options-content > section[hidden] { display: none !important; }   /* los paneles tienen su propio display y si no se seguían viendo */
+.options-page .options-panel { margin: 0; }
+@media (max-width: 900px) { .options-page { grid-template-columns: minmax(0, 1fr); } .options-nav { flex-direction: row; flex-wrap: wrap; position: static; } }
+.options-description { margin: 0 0 12px; font-size: 0.85rem; }
+.options-page .group { display: grid; gap: 5px; margin-bottom: 12px; }
+.options-page .group > span { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+.options-page .options { display: flex; gap: 5px; flex-wrap: wrap; }
+.options-page .options button { flex: 1; background: var(--input-background); border: 1px solid var(--line); color: var(--text); padding: 5px 8px; cursor: pointer; font: 600 0.8rem "Segoe UI", system-ui, sans-serif; }
+html .options-page .options button { border-radius: 999px; }
+.options-page .options button[aria-pressed="true"] { background: var(--selected-low); border-color: var(--accent); color: #fff; }
+.options-page .profile-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; align-items: start; }
+.options-page .drop-zone-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+html.language-aurebesh .options-page .group, html.language-aurebesh .options-page .group * { text-transform: none !important; font-family: "Segoe UI", system-ui, sans-serif !important; }
+
+/* Panel en carrera: a la izquierda la pantalla de muestra 16:9 (el panel se arrastra) y la colocación;
+   a la derecha el resto, en dos columnas, para que quepa sin scroll */
+.race-panel-editor { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.race-panel-left, .race-panel-right { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.options-page .options-content, .options-page .options-panel, .race-panel-right > * { min-width: 0; }
+.race-panel-right { grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.race-panel-right > :nth-child(n+5) { grid-column: 1 / -1; }
+.options-page .race-panel-editor .group { margin: 0; }
+.options-page .race-panel-editor .options { flex-wrap: wrap; }
+.options-page .race-panel-editor .options button { flex: 1 1 auto; padding-left: 10px; padding-right: 10px; }
+.options-page .race-panel-left .note { margin: 0; }
+@media (max-width: 1100px) { .race-panel-editor { grid-template-columns: 1fr; } }
+.race-panel-screen { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, #5c7a8f 0%, #a9b8bf 45%, #6b5b4b 46%, #3b3129 100%); margin-bottom: 8px; }
+.race-panel-stage { position: absolute; left: 0; top: 0; width: 3840px; height: 2160px; transform-origin: 0 0; }
+.race-panel-preview { position: absolute; transform-origin: 0 0; cursor: grab; user-select: none; touch-action: none; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 600; }
+.race-panel-preview:active { cursor: grabbing; }
+.race-panel-top { height: 2px; margin: 0 -10px 2px; }
+.race-panel-row { display: grid; grid-template-columns: 36% 34% 30%; align-items: center; white-space: nowrap; }
+.race-panel-row span:nth-child(2), .race-panel-row span:nth-child(3) { text-align: right; }
+.race-panel-bars { display: flex; gap: 3px; height: 4px; margin: 3px 0 5px; }
+.race-panel-bars i { flex: 1; }
+.race-panel-colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px 12px; }
+.race-panel-colors label { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; }
+.race-panel-colors input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid var(--line-strong); background: none; cursor: pointer; }
+.options-page .race-panel-rows { flex-wrap: wrap; }
+.options-page .group input[type="range"] { width: 100%; max-width: 260px; accent-color: var(--accent); }

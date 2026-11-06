@@ -4,6 +4,49 @@ import re, subprocess, sys
 import os
 TOOLS = os.path.dirname(os.path.abspath(__file__)) + '/'
 WEB = TOOLS + '../app/web/'
+
+# Montaje de template.html a partir de app/web/src/ (template.html es un archivo generado: no se edita).
+# src/page.html es la página entera, con dos marcadores en su lugar:
+#   /* @include css */   dentro de <style>       -> se sustituye por los CSS de CSS_FILES, en ese orden
+#   // @include js       dentro del 2.º <script> -> se sustituye por los JS de JS_FILES, en ese orden
+# Cada archivo es un trozo contiguo del original, así que el orden de las listas es el orden final.
+CSS_FILES = [
+    'base',      # variables, tema oscuro, fuentes y elementos generales
+    'topbar',    # barra de arriba, modo simple, iconos, paneles plegables
+    'home',      # portada, resumen del evento, tablas y animaciones
+    'themes',    # temas Galactic Racer, Jedi e Imperial, efecto holograma
+    'options',   # página de Opciones
+    'loading',   # pantalla de carga
+    'event',     # página del evento: columnas, mapa, repetición, boost
+    'social',    # avisos, pilotos, perfil y Social
+    'views',     # vista de tarjetas o de tiempos, Acerca de, intensidad del holograma
+]
+JS_FILES = [
+    'helpers',   # utilidades generales y lectura de tiempos
+    'names',     # nombres de eventos y planetas, récords del juego, Aurebesh
+    'core',      # modelo (estado) y navegación
+    'home',      # portada, iconos, ilustraciones de planetas, vistas
+    'event',     # página del evento: pestañas, resumen, intentos
+    'analysis',  # análisis de vuelta, vuelta ideal, posiciones en la ruta
+    'compare',   # comparación A contra B, repetición y boost
+    'charts',    # colores de velocidad, gráficas y mapa
+    'options',   # datos, actualización automática, idioma, avisos y Opciones
+    'about',     # Acerca de y novedades (CHANGELOG)
+    'racepanel', # Opciones: panel en carrera (posición, tamaño, colores y filas)
+    'pilots',    # archivos de piloto, clasificaciones y exportación
+    'social',    # perfil, secciones de Opciones y Social
+    'start',     # arranque de la app
+]
+def read_bytes(path):
+    with open(path, 'rb') as file:
+        return file.read()
+def join_files(folder, names, extension):
+    return b''.join(read_bytes(WEB + 'src/' + folder + '/' + name + '.' + extension) for name in names)
+page = read_bytes(WEB + 'src/page.html')
+page = page.replace(b'/* @include css */\n', join_files('css', CSS_FILES, 'css'))
+page = page.replace(b'// @include js\n', join_files('js', JS_FILES, 'js'))
+with open(WEB + 'template.html', 'wb') as file:   # en binario: siempre LF
+    file.write(page)
 subprocess.run([sys.executable, TOOLS + 'english.py'], check=True)
 analyzer = open(TOOLS + 'analysis.js', encoding='utf-8').read()
 analyzer = re.sub(r'\n?if \(typeof module[^\n]*\n?', '\n', analyzer)   # the node export is only for the tests

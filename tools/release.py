@@ -18,8 +18,8 @@ def replace(file, pattern, new):
     open(file, 'w', encoding='utf-8', newline='').write(changed)
 replace(path('mod', 'Scripts', 'main.lua'), r"local VERSION = '[\d.]+'", "local VERSION = '%s'" % version)
 replace(path('app', 'main.go'), r'appVersion = "[\d.]+"', 'appVersion = "%s"' % version)
-if "version: '%s'" % version not in open(path('app', 'web', 'template.html'), encoding='utf-8').read():
-    print('AVISO: no hay novedades de la %s en el CHANGELOG de app/web/template.html' % version)
+if "version: '%s'" % version not in open(path('app', 'web', 'src', 'js', 'about.js'), encoding='utf-8').read():
+    print('AVISO: no hay novedades de la %s en el CHANGELOG de app/web/src/js/about.js' % version)
 run(['node', path('tools', 'check_lua.js'), path('mod', 'Scripts', 'main.lua'), path('mod', 'Scripts', 'timing_panel.lua')])
 run([sys.executable, path('tools', 'make_web.py')])
 build = path('build'); os.makedirs(build, exist_ok=True)

@@ -1,0 +1,88 @@
+/* ---------- Galactic Racer theme: inspired by the game's menus (petrol blue, cream, coral and mustard) ---------- */
+@font-face { font-family: "SWGR Display"; src: url("/app-fonts/display.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "SWGR Text"; src: url("/app-fonts/text-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "SWGR Text"; src: url("/app-fonts/text-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "SWGR Text"; src: url("/app-fonts/text-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+html[data-theme="galactic"] {
+  --background: #0f2228; --panel: #173139; --panel-raised: #1d3b44; --line: #2a4b55; --line-strong: #3e6874;
+  --text: #f1e8d6; --text-muted: #a8b9b5; --text-dim: #6c8789;
+  --accent: #ef6b3c; --accent-light: #f39a63; --accent-deep: #c24a1f; --reference: #8fd6d2; --best: #c7a4ff; --gain: #8fd88a; --loss: #ff9a5c; --warning: #f2c14e;
+  --map-background: #0c1d22; --map-track: #23434c; --map-text: #bfd0cc;
+  --surface: #1a363f; --surface-low: #132a31; --surface-hover: #22434d; --input-background: #0e2026; --selected-high: #a8481f; --selected-low: #6d2c12; --line-hover: #5f8f99; --hologram: #7fe3ff;
+  --glow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent);
+  --font-display: "SWGR Display", "Archivo Black", "Arial Black", sans-serif;
+  --font-body: "SWGR Text", "Barlow Semi Condensed", "Segoe UI", sans-serif;
+  --corner-cut: 0px;
+}
+html[data-theme="galactic"] body { background: radial-gradient(1100px 520px at 70% -160px, rgba(143, 214, 210, .10), transparent 70%),
+  radial-gradient(900px 500px at 0% 110%, rgba(239, 107, 60, .08), transparent 70%), var(--background); }
+html[data-theme="galactic"] .topbar { background: linear-gradient(180deg, #17333b, #10262d); }
+html[data-theme="galactic"] .brand { letter-spacing: 0.08em; font-weight: 400; }
+html[data-theme="galactic"] h1 { font-weight: 400; letter-spacing: 0.02em; text-shadow: none; }
+html[data-theme="galactic"] h1::before { content: "/"; color: var(--accent); margin-right: 0.08em; }
+html[data-theme="galactic"] .event-name, html[data-theme="galactic"] .planet-group-none { font-weight: 400; letter-spacing: 0.03em; }
+html[data-theme="galactic"] h2 { color: var(--warning); font-family: var(--aurebesh-font) var(--font-display); font-weight: 400; letter-spacing: 0.06em; font-size: 0.82rem;
+  display: inline-grid; grid-auto-flow: row; justify-items: start; gap: 0; padding-bottom: 3px; border-bottom: 2px solid var(--warning); }
+html[data-theme="galactic"] h2::before { display: none; }
+html[data-theme="galactic"] h2 .aurebesh { order: -1; margin: 0 0 1px; font-size: 0.62rem; color: var(--text-muted); }
+/* Formas de Galactic Racer para todos los temas (esquinas redondeadas, franja de rayas, botones en píldora);
+   los colores y la tipografía siguen siendo de cada tema */
+html .panel, html .event-card, html .tile, html .summary-strip { border-radius: 10px; clip-path: none; }
+html .panel::before, html .event-card::before, html .tile::before, html .summary-strip::before {
+  left: 14px; top: 0; width: 54px; height: 5px; box-shadow: none; opacity: 1;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 5px, transparent 5px 9px); }
+html .button, html .filters button, html .segmented { border-radius: 999px; clip-path: none; }
+html .segmented { overflow: hidden; }
+html[data-theme="galactic"] .filters button[aria-pressed="true"], html[data-theme="galactic"] .segmented button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: none; }
+html[data-theme="galactic"] .planet { color: var(--accent); }
+html[data-theme="galactic"] .strip-record .strip-value { text-shadow: none; color: var(--text); }
+html[data-theme="galactic"] .summary-strip { background: linear-gradient(100deg, color-mix(in srgb, var(--reference) 10%, var(--panel)), var(--panel) 60%); }
+html .pill { border-radius: 999px; }
+html .tag { border-radius: 4px; }
+html[data-theme="galactic"] .live i { background: var(--reference); box-shadow: 0 0 8px var(--reference); }
+html[data-theme="galactic"] .saber .blade { background: #fff6e8; box-shadow: 0 0 3px 1px var(--accent), 0 0 10px 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+html[data-theme="galactic"] .loader-blade { box-shadow: 0 0 4px 1px var(--accent), 0 0 18px 4px color-mix(in srgb, var(--accent) 70%, transparent); }
+html[data-theme="galactic"] .loader { background: radial-gradient(800px 420px at 50% 40%, rgba(143, 214, 210, .12), transparent 70%), var(--background); }
+html[data-theme="galactic"] tr.group-row td { background: var(--surface-low); }
+/* The heavy font only in titles; small labels use the bold text font */
+html[data-theme="galactic"] :is(.figure .label, .tile .label, .strip-item .label, th, .event-vehicle, .planet-group-others .label, .live, .breadcrumbs, .tag, .pill, .loss-sector, .loader-step, .brand small) {
+  font-family: var(--aurebesh-font) var(--font-body); font-weight: 700; letter-spacing: 0.1em; }
+html[data-theme="galactic"] :is(.figure .label, .tile .label, .strip-item .label, th) { font-size: 0.72rem; }
+
+/* ---------- Jedi theme: navy blue and a blue saber ---------- */
+html[data-theme="jedi"] {
+  --background: #060a12; --panel: #0b1220; --panel-raised: #111b2e; --line: #1a2742; --line-strong: #23406e;
+  --text: #e6eefb; --text-muted: #8fa1bd; --text-dim: #56688a;
+  --accent: #3d8bff; --accent-light: #7fb3ff; --accent-deep: #0a3aa0; --reference: #f0d38a; --best: #c09bff; --gain: #4fd18b; --loss: #ff8a3d; --warning: #f2c14e;
+  --map-background: #04070d; --map-track: #16223a; --map-text: #aebbd0;
+  --surface: #0d1626; --surface-low: #080e19; --surface-hover: #142238; --input-background: #050a13; --selected-high: #1c4aa3; --selected-low: #102c60; --line-hover: #2d5aa8; --hologram: #6fb5ff;
+}
+/* ---------- Imperial theme: charcoal grey and steel ---------- */
+html[data-theme="imperial"] {
+  --background: #0b0c0e; --panel: #141619; --panel-raised: #1b1e22; --line: #2a2e34; --line-strong: #4a5059;
+  --text: #eef0f2; --text-muted: #9aa1aa; --text-dim: #636a73;
+  --accent: #dfe5ec; --accent-light: #ffffff; --accent-deep: #5a6470; --reference: #ff5a4a; --best: #b382ff; --gain: #4fd18b; --loss: #ff8a3d; --warning: #f2c14e;
+  --map-background: #08090b; --map-track: #23272c; --map-text: #b9c0c8;
+  --surface: #16181c; --surface-low: #101215; --surface-hover: #20242a; --input-background: #08090b; --selected-high: #4a515b; --selected-low: #2b3037; --line-hover: #6a717b; --hologram: #cfe3ff;
+  --glow: 0 0 6px rgba(223, 229, 236, .45), 0 0 16px rgba(223, 229, 236, .18);
+}
+html[data-theme="imperial"] .planet { color: var(--text); }
+html[data-theme="imperial"] .filters button[aria-pressed="true"], html[data-theme="imperial"] .segmented button[aria-pressed="true"], html[data-theme="imperial"] .options-page .options button[aria-pressed="true"] { color: #fff; }
+/* ---------- Hologram effect: scan lines and a band of light moving down ---------- */
+html.hologram body::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer-events: none;
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--hologram) 7%, transparent) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+.hologram-band { display: none; }
+html.hologram .hologram-band { display: block; position: fixed; left: 0; right: 0; top: -30vh; height: 30vh; z-index: 96; pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--hologram) 6%, transparent) 70%, color-mix(in srgb, var(--hologram) 12%, transparent) 96%, transparent);
+  animation: hologramBand 7s linear infinite; }
+@keyframes hologramBand { from { transform: translateY(0); } to { transform: translateY(160vh); } }
+html.hologram h1, html.hologram .strip-value, html.hologram .planet, html.hologram .event-name {
+  text-shadow: 1px 0 color-mix(in srgb, #ff2bd0 40%, transparent), -1px 0 color-mix(in srgb, #2be3ff 40%, transparent), 0 0 16px color-mix(in srgb, var(--hologram) 30%, transparent); }
+html.hologram .panel, html.hologram .event-card, html.hologram .tile, html.hologram .summary-strip { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hologram) 12%, transparent), 0 0 24px color-mix(in srgb, var(--hologram) 6%, transparent); }
+/* Hologram without flicker: only the sweep of light when it powers on (when the app opens or the effect is turned on) */
+@keyframes powerOn { 0% { transform: scaleY(.003); opacity: 1; } 30% { transform: scaleY(.003); opacity: 1; } 62% { transform: scaleY(1); opacity: .55; } 100% { transform: scaleY(1); opacity: 0; } }
+html.hologram.powering-on body::before { content: ""; position: fixed; inset: 0; z-index: 97; pointer-events: none; transform-origin: 50% 50%;
+  background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--hologram) 30%, transparent) 46%, color-mix(in srgb, var(--hologram) 25%, #fff) 50%, color-mix(in srgb, var(--hologram) 30%, transparent) 54%, transparent 100%);
+  animation: powerOn .6s cubic-bezier(.3,.7,.2,1) both; }
+html.no-animations .hologram-band { display: none; }
+
