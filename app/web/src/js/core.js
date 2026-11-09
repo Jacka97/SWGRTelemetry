@@ -15,7 +15,7 @@
     const sessions = event.sessions.slice().sort((first, second) => first.id.localeCompare(second.id));
     event.sessions = sessions;
     event.gameRecord = gameRecordOf(data, event.id);
-    event.name = data.eventNames[event.id] || (officialEventName(event.id) && [planetOf(event.gameRecord, event.id), officialEventName(event.id)].filter(Boolean).join(' · ')) || gameEventName(event.gameRecord, event.id) || describeEventCode(event.id);
+    event.name = (officialEventName(event.id) && [planetOf(event.gameRecord, event.id), officialEventName(event.id)].filter(Boolean).join(' · ')) || gameEventName(event.gameRecord, event.id) || describeEventCode(event.id);
     Object.assign(event, eventTitles(data, event.id, event.gameRecord));
     event.lastDate = sessions.length ? sessions[sessions.length - 1].date || sessions[sessions.length - 1].id : '';
     event.plannedLaps = Math.max(0, ...sessions.map(session => session.plannedLaps || 0));
@@ -29,9 +29,10 @@
     }
     event.rolling = event.plannedLaps === 1 && sessions.some(session => (session.laps || []).some(lap => lap.rolling));
     if (event.rolling) for (const session of sessions) for (const lap of session.laps || []) {
-      if (lap.rolling) continue;
+      // Arranque lanzado con Precisión de antes del arreglo: los puntos se descontaron dos veces, cuenta el total
+      if (lap.rolling) { if (lap.bonusEvent && session.total > 0 && Math.abs(session.total - lap.time) > 1) { lap.time = session.total; lap.sectors = []; lap.valid = false; } continue; }
       lap.rolling = true; lap.officialLap = lap.time; lap.sectors = []; lap.valid = false;
-      if (session.total > lap.time + 1) lap.time = session.total; else lap.official = false;   // sin total no se puede comparar
+      if (session.total > 0 && Math.abs(session.total - lap.time) > 1) lap.time = session.total; else lap.official = false;   // sin total no se puede comparar (la puerta puede quedar antes o después del GO)
     }
     event.attempts = sessions.length;
     event.completeSessions = sessions.filter(session => session.total > 0);
@@ -133,7 +134,7 @@
     main.classList.add('pending'); topBar.classList.add('loading');
     const slowNotice = setTimeout(() => byId('pageLoading').classList.add('visible'), 250);
     render();
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); main.scrollTop = 0;
     await Promise.race([Promise.resolve(state.analysisLoading), sleep(6000)]).catch(() => {});
     clearTimeout(slowNotice);
     if (state.currentNavigation !== navigation) return;
@@ -163,6 +164,9 @@
     if (!state.data) return;
     state.events = buildEvents(state.data);
     renderBreadcrumbs();
+    // La página en la que estás queda marcada en la barra de arriba, como la opción elegida de un menú
+    const currentPage = state.view.name === 'social' ? 'socialButton' : state.view.name === 'options' ? 'optionsButton' : 'arcadeButton';
+    ['arcadeButton', 'socialButton', 'optionsButton'].forEach(id => byId(id).setAttribute('aria-pressed', id === currentPage ? 'true' : 'false'));
     if (state.view.name === 'event' && state.events.some(event => event.id === state.view.id)) renderEvent();
     else if (state.view.name === 'social') renderSocial();
     else if (state.view.name === 'options') renderOptions();

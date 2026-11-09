@@ -91,9 +91,9 @@
   // The planet (shown in its own font) and the event name without the planet
   function eventTitles(data, eventId, gameRecord) {
     const planet = planetOf(gameRecord, eventId);
-    const title = data.eventNames[eventId] || officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet);
+    const title = officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet);
     // For cards and lists that already show the vehicle on its own
-    const shortTitle = data.eventNames[eventId] || officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet, true);
+    const shortTitle = officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet, true);
     return { planet, title, shortTitle };
   }
   // Aurebesh: only the lowercase letters a-z (that font's capitals and digits are other symbols)

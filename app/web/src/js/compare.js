@@ -173,8 +173,23 @@
       const margin = Math.max(maxX - minX, maxY - minY) * 0.12 + 2000;
       zoomBox = { minX: minX - margin, maxX: maxX + margin, minY: minY - margin, maxY: maxY + margin };
     }
+    traceA = withoutBonusJumps(traceA); traceB = withoutBonusJumps(traceB);
     replay.segment = { key, analysis, traceA, traceB, kind, startDistance, endDistance, zoomBox, nameB: referenceName(analysis.lapB), lapsA, lapsB, sectorNumber };
     return replay.segment;
+  }
+  // La traza descuenta los puntos de Precisión: su tiempo retrocede 1,5 s en cada uno y los coches saltaban.
+  // Para reproducirla se quitan esos retrocesos (queda el tiempo real en pista); las gráficas no cambian.
+  function withoutBonusJumps(item) {
+    if (!item) return item;
+    let offset = 0, previous = null, lastStep = 0, changed = false;
+    const trace = item.trace.map(point => {
+      if (previous !== null && point.time + offset < previous - 0.2) { offset += previous - (point.time + offset) + lastStep; changed = true; }
+      const time = point.time + offset;
+      if (previous !== null && time > previous) lastStep = time - previous;
+      previous = time;
+      return Object.assign({}, point, { time });
+    });
+    return changed ? Object.assign({}, item, { trace, time: trace[trace.length - 1].time }) : item;
   }
   function replayDuration() {
     const segment = replaySegment(), replay = state.replay;

@@ -30,7 +30,7 @@
   // Options page: theme, hologram, animations, language and the ghost; saved in preferences.txt
   const THEME_NAMES = { sith: 'Sith', jedi: 'Jedi', imperial: 'Imperial', galactic: 'Galactic Racer' };
   const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
-    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game' };   // ghost_*: el mod las lee al empezar la siguiente carrera
+    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game', selected_effect: 'hologram', selected_speed: 'normal', selected_lines: 'normal', selected_bands: 'one', page_speed: 'normal', page_bands: 'one', page_same_as_buttons: 'off' };   // ghost_*: el mod las lee al empezar la siguiente carrera
   // Simple mode shows the essentials; Tryhard (the default) the whole analysis
   const isSimpleMode = () => preference('mode') === 'simple';
   const preference = key => ((state.data && state.data.preferences) || {})[key] || PREFERENCE_DEFAULTS[key];
@@ -44,10 +44,25 @@
     root.classList.toggle('hologram-soft', hologram === 'soft');
     root.classList.toggle('hologram-strong', hologram === 'strong');
     setAnimations(preference('animations') !== 'off');
+    // Efecto de la opción elegida: con el holograma de la app, siempre o nunca; su velocidad y sus líneas
+    const selectedEffect = preference('selected_effect');
+    root.classList.toggle('selected-holo', selectedEffect === 'always' || (selectedEffect === 'hologram' && root.classList.contains('hologram')));
+    root.style.setProperty('--selected-speed', { slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s');
+    root.style.setProperty('--selected-bands', { one: '1', two: '2', three: '3' }[preference('selected_bands')] || '1');
+    // Banda de luz del fondo: su propia velocidad y sus líneas, o las de los botones sin perder las suyas
+    const linked = preference('page_same_as_buttons') === 'on';
+    const pageNormal = root.classList.contains('hologram-strong') ? '5s' : '7s';
+    const pageSpeed = linked ? ({ slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s') : ({ slow: '11s', normal: pageNormal, fast: '3.5s' }[preference('page_speed')] || pageNormal);
+    const pageBands = preference(linked ? 'selected_bands' : 'page_bands');
+    root.style.setProperty('--page-speed', pageSpeed);
+    root.classList.toggle('page-bands-2', pageBands === 'two'); root.classList.toggle('page-bands-3', pageBands === 'three');
+    root.style.setProperty('--selected-gap', { few: '6px', normal: '3px', many: '2px' }[preference('selected_lines')] || '3px');
     root.classList.toggle('mode-simple', isSimpleMode());
     document.querySelectorAll('#modeButton [data-mode]').forEach(label => label.classList.toggle('chosen', label.dataset.mode === preference('mode')));
     document.querySelectorAll('#main [data-preference]').forEach(group => group.querySelectorAll('button').forEach(button =>
       button.setAttribute('aria-pressed', String(button.dataset.value === shownPreference(group.dataset.preference)))));
+    document.querySelectorAll('#main [data-preference="page_speed"], #main [data-preference="page_bands"]').forEach(group => group.closest('.group').classList.toggle('linked', linked));
+    if (byId('linkBands')) byId('linkBands').checked = linked;
   }
   // El valor que marca cada grupo de botones: la llama «No» es ghost_flame = off (la guarda el mod aparte del modo)
   const shownPreference = key => key === 'language' ? currentLanguage() : key === 'ghost_flame_mode' && preference('ghost_flame') === 'off' ? 'off' : preference(key);
@@ -55,6 +70,10 @@
     if (state.data) { state.data.preferences = state.data.preferences || {}; state.data.preferences[key] = value; }
     return postJson('/api/save', { kind: 'preference', key, value }).catch(() => {});
   }
+  document.addEventListener('change', changeEvent => {
+    if (changeEvent.target.id !== 'linkBands') return;
+    savePreference('page_same_as_buttons', changeEvent.target.checked ? 'on' : 'off'); applyPreferences();
+  });
   // The mode button of the top bar switches between Simple and Tryhard
   byId('modeButton').addEventListener('click', () => {
     savePreference('mode', isSimpleMode() ? 'tryhard' : 'simple'); applyPreferences();

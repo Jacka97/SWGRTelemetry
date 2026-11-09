@@ -303,8 +303,20 @@
     if (failed.length) showToast('No se pudo añadir ' + failed.join(' · '));
     await refreshData();
   }
-  // El botón «Importar tiempos» de la barra de arriba abre el selector de archivos de piloto
-  byId('importButton').addEventListener('click', () => byId('pilotFileInput').click());
+  // El botón de la barra de arriba abre una ventana en medio de la pantalla: importar archivos de piloto o exportar el tuyo
+  const setTransferMenu = open => { byId('transferMenu').hidden = !open; byId('importButton').setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  byId('importButton').addEventListener('click', () => setTransferMenu(true));
+  document.addEventListener('click', async clickEvent => {
+    const option = clickEvent.target.closest('[data-transfer]');
+    if (!option) { if (clickEvent.target === byId('transferMenu')) setTransferMenu(false); return; }   // pulsar fuera de la ventana la cierra
+    setTransferMenu(false);
+    if (option.dataset.transfer === 'import') { byId('pilotFileInput').click(); return; }
+    // Exportar: en su apartado de Opciones, donde se ve el progreso y el resultado
+    state.optionsSection = 'optionsPilotFile';
+    await navigate({ name: 'options' });
+    if (byId('pilotExport')) byId('pilotExport').click();
+  });
+  document.addEventListener('keydown', keyEvent => { if (keyEvent.key === 'Escape') setTransferMenu(false); });
   byId('pilotFileInput').addEventListener('change', changeEvent => { importPilotFiles(changeEvent.target.files); changeEvent.target.value = ''; });
   // .swgr files can be dragged onto any part of the window
   const draggingFiles = dragEvent => [...(dragEvent.dataTransfer && dragEvent.dataTransfer.types || [])].includes('Files');

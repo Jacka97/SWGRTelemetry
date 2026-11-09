@@ -359,6 +359,24 @@
     return trace.length > 1 ? { trace, time: timeOffset, lapCount: laps.length } : null;
   }
   const isOwnLap = lap => lap && !lap.isIdeal && !lap.isFriend;
+  // Puntos de Precisión: el juego solo dice los que pasas, así que los del evento son la unión de los de tus
+  // intentos cargados (el mismo punto cae siempre a unos metros). Cuántos pasó y cuáles se saltó una vuelta.
+  const BONUS_POINT_RADIUS = 4000;   // 40 m
+  const sameBonusPoint = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= BONUS_POINT_RADIUS;
+  function bonusCourse(analysis) {
+    if (!analysis.bonusCoursePoints) {
+      const points = [];
+      analysis.laps.forEach(lap => (lap.bonusPoints || []).forEach(point => { if (!points.some(known => sameBonusPoint(known, point))) points.push(point); }));
+      analysis.bonusCoursePoints = points.sort((first, second) => first.distance - second.distance);
+    }
+    return analysis.bonusCoursePoints;
+  }
+  // null si la vuelta no tiene marcas de puntos (amigos, ideal, carreras antiguas)
+  function bonusStatus(analysis, lap) {
+    if (!lap || !lap.bonusPoints || !lap.bonusPoints.length) return null;
+    const course = bonusCourse(analysis), missed = course.filter(point => !lap.bonusPoints.some(own => sameBonusPoint(own, point)));
+    return { course, missed, passed: course.length - missed.length, lost: missed.reduce((sum, point) => sum + point.value, 0) };
+  }
   // The rival of a whole race: another attempt of yours with the same laps or, if not, the reference repeated on every lap
   function raceRival(analysis, lapA, lapB) {
     if (!lapA || !lapB || !isWholeRace(analysis, lapB) || (!lapB.friendRace && !lapB.idealRace && lapB.sessionId === lapA.sessionId)) return null;

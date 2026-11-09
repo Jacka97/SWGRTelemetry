@@ -1,4 +1,4 @@
-SWGR Telemetry v0.9.31 - for OFFLINE practice
+SWGR Telemetry v0.9.41 - for Arcade events
 (The mod and the app now share the same version number; both will become 1.0 together.)
 
 Installation
@@ -113,6 +113,7 @@ Notes
     to tracks\<circuit>\ (the mod opens no window, so the game does not leave full screen);
     from then on the mod records straight into that folder.
   - The stretch from the grid to the first time you cross the finish line does not count as a lap.
-  - The panel is an in-race aid: use it offline only.
-  - Before playing online or uploading times to the leaderboard: turn UE4SS off (remove dwmapi.dll).
+  - The panel and the ghost only appear in Arcade events.
+  - UE4SS is loaded with the game in every mode: before playing multiplayer we recommend removing
+    or renaming dwmapi.dll in the Win64 folder (restore it to use the mod).
   - Uninstall: delete the SWGRTelemetry folder, or just enabled.txt to turn it off.

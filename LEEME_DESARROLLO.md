@@ -1,4 +1,4 @@
-# SWGR Telemetry — código fuente (0.9.31)
+# SWGR Telemetry — código fuente (0.9.41)
 
 Ábrelo en VS Code con *Archivo > Abrir carpeta…* sobre esta carpeta. VS Code te propondrá las extensiones recomendadas (Go, Lua, Python).
 
@@ -25,5 +25,5 @@ Necesitas Go 1.24+, Python 3 y Node.js. En VS Code: *Terminal > Ejecutar tarea*:
 La tarea pone el número en el mod y en la app, revisa el mod, genera las páginas, compila y monta el paquete con `package/` (LEEME, guías y `fonts/Readme.txt`) más las carpetas vacías.
 
 ## Ojo
-- El mod solo para jugar OFFLINE; quita UE4SS (`dwmapi.dll`) antes de jugar online.
+- El mod solo funciona en el Arcade; antes de jugar al multijugador se recomienda quitar o renombrar `dwmapi.dll` (UE4SS se carga en todos los modos).
 - No metas imágenes ni recursos del juego en el código (EULA y derechos).

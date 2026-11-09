@@ -1,7 +1,17 @@
   // ---------- About and what's new ----------
   // The app and the mod carry the same number since 0.9.10 (both will become 1.0 together)
   const CHANGELOG = [
-    { version: '0.9.31', items: [
+    { version: '0.9.41', items: [
+      'Tramos con la puerta antes del GO, o que parecen circuito y son una sola pasada (Carreras frescas, Arena de la muerte): el tiempo y el mapa ya salen bien',
+      'Precisión con carrerilla: los puntos ya no se descuentan dos veces',
+      'Precisión: la app marca los puntos que te saltaste en el mapa y en la gráfica de velocidad (tryhard), y la repetición ya no va a saltos',
+      'Mapa: zoom con la rueda, arrastrar para moverlo y doble clic para volver a la vista entera',
+      'Columnas de la página del evento plegables hacia su lado, y recuadro de Comparar plegable',
+      'Portada con una fila por planeta que se desplaza de lado',
+      'Holograma renovado: tarjetas, paneles y botones flotando sin caja, con opciones para la luz de los botones y del fondo',
+      'Opciones con iconos, y ventana rápida para importar o exportar tiempos',
+      'Modo simple: Intentos y Amigos en un solo panel con pestañas',
+      'El nombre de los eventos ya no se puede cambiar: es siempre el del juego',
       'Comparar: la barra A contra B ya no se mueve al cambiar entre normal, postcombustión y ramjet',
       'Fantasma en pista: estela desde sus toberas (naranja con la postcombustión, azul con el ramjet) y la llama del motor del juego, que se activan y ajustan en Opciones',
       'Tramos con carrerilla (la vuelta del juego empieza en una puerta después de salir): el tiempo cuenta desde la salida, el S1 va de la salida a la puerta y los demás sectores hasta la meta, así suman el total del juego. Tus mejores tiempos anteriores de esos tramos empiezan de cero',
@@ -142,7 +152,7 @@
   }
   function changelogHtml() {
     const [current, ...older] = CHANGELOG;
-    return (current ? changelogEntry(current, true) : '') +
+    return (current ? changelogEntry(current, false) : '') +
       (older.length ? '<details class="older-versions"><summary>Versiones anteriores</summary>' + older.map(entry => changelogEntry(entry, false)).join('') + '</details>' : '');
   }
   function aboutSection() {
@@ -165,7 +175,7 @@
       '<dt>WebView2 y go-webview2</dt><dd>La ventana de la app usa el motor de Edge que ya trae Windows.</dd>' +
       '</dl><p class="note">Herramienta no oficial hecha por fans, sin relación con Lucasfilm, Disney ni los creadores del juego. Star Wars, STAR WARS: Galactic Racer y los nombres de planetas, vehículos y eventos pertenecen a sus respectivos propietarios.</p></div></section>';
     html += '<section class="panel"><div class="panel-header"><h2>Importante</h2></div><div class="about-warning">' +
-      'El mod es solo para entrenar <b>offline</b>. Antes de jugar online o en clasificaciones, desactiva UE4SS quitando <b>dwmapi.dll</b> de la carpeta Win64 del juego (vuelve a ponerlo para entrenar). ' +
+      'El mod solo funciona en los eventos de <b>Arcade</b>: en la historia y en el multijugador no graba ni muestra nada. UE4SS sigue cargado con el juego en todos los modos, así que antes de jugar al multijugador se recomienda quitar o renombrar <b>dwmapi.dll</b> en la carpeta Win64 del juego (vuelve a dejarlo como estaba para usar el mod). ' +
       'El mod solo lee datos del juego: no cambia nada de la partida. La app trabaja solo con tus archivos, en tu PC y sin internet.</div>' +
       '<p class="note">Carpeta del mod: <span class="numeric">' + escapeHtml(data.modFolder || '—') + '</span></p></section></section>';
     return html;

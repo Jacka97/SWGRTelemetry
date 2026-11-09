@@ -36,6 +36,12 @@
     const scaleToFit = box => Math.min((width - 2 * padding) / ((box.maxX - box.minX) || 1), (height - 2 * padding) / ((box.maxY - box.minY) || 1));
     let scale = scaleToFit(view), centerX = (view.minX + view.maxX) / 2, centerY = (view.minY + view.maxY) / 2;
     if (cars && replay.followCar) { scale = Math.max(scale, scaleToFit(bounds) * 4); centerX = cars.carA.x; centerY = cars.carA.y; }
+    // Zoom y arrastre del mapa (se vuelve a la vista entera al cambiar de evento)
+    const eventId = analysis.event && analysis.event.id;
+    if (state.mapView.eventId !== eventId) state.mapView = { eventId, zoom: 1, panX: 0, panY: 0 };
+    const mapView = state.mapView;
+    scale *= mapView.zoom; centerX += mapView.panX; centerY += mapView.panY;
+    mapView.scale = scale; mapView.width = width; mapView.height = height;
     const toScreen = (x, y) => [width / 2 + (x - centerX) * scale, height / 2 + (y - centerY) * scale];
     context.lineCap = 'round'; context.lineJoin = 'round';
     context.strokeStyle = cssVariable('--map-track'); context.lineWidth = 14;
@@ -98,6 +104,16 @@
         : trailMode ? TRAIL_LEGEND
         : gainRate ? '<span style="color:var(--gain)">ganas tiempo</span><span class="scale-bar" style="background:linear-gradient(90deg,' + cssVariable('--gain') + ',' + cssVariable('--map-text') + ',' + cssVariable('--loss') + ')"></span><span style="color:var(--loss)">pierdes tiempo</span>'
         : '<span>' + lowestSpeed + '</span><span class="scale-bar" style="background:linear-gradient(90deg,' + speedPalette.join(',') + ')"></span><span>' + highestSpeed + ' km/h</span>';
+    }
+    // Tryhard: los puntos de Precisión de la vuelta A, en rojo los que se saltó
+    const bonus = !isSimpleMode() && bonusStatus(analysis, lapA);
+    if (bonus) {
+      bonus.course.forEach(point => {
+        const [x, y] = toScreen(point.x, point.y), isMissed = bonus.missed.includes(point);
+        context.fillStyle = isMissed ? cssVariable('--loss') : cssVariable('--map-text');
+        context.beginPath(); context.arc(x, y, isMissed ? 6 : 3, 0, Math.PI * 2); context.fill();
+      });
+      scaleHtml += '<span>' + bonus.passed + ' puntos pasados de ' + bonus.course.length + (bonus.missed.length ? ' · saltados: ' + bonus.missed.length + ' (' + bonus.lost.toFixed(1) + ' s)' : '') + '</span>';
     }
     if (state.mapMode === 'gain' && !lapB) scaleHtml = '<span>Elige una vuelta de referencia para ver dónde ganas o pierdes.</span>';
     byId('mapScale').innerHTML = scaleHtml;
@@ -274,6 +290,13 @@
         context.fillRect(xOf(from.distance), rowY, Math.max(1, xOf(to.distance) - xOf(from.distance)), 4);
       }
     });
+    // Tryhard: una raya en cada punto de Precisión que A se saltó
+    const bonusOfA = !isSimpleMode() && comparisonKind() !== 'race' && bonusStatus(analysis, analysis.lapA);
+    if (bonusOfA) {
+      context.save(); context.fillStyle = cssVariable('--loss'); context.globalAlpha = 0.7;
+      bonusOfA.missed.filter(inside).forEach(point => context.fillRect(xOf(point.distance) - 1, CHART_MARGIN.top, 2, height - CHART_MARGIN.top - CHART_MARGIN.bottom));
+      context.restore();
+    }
     context.font = '11px ' + cssVariable('--font-display'); context.fillStyle = cssVariable('--text-muted'); context.textAlign = 'left'; context.textBaseline = 'top';
     context.fillText('VELOCIDAD (km/h)', CHART_MARGIN.left + 4, CHART_MARGIN.top + 2);
     context.textAlign = 'right'; context.fillText(analysis.track && analysis.track.isPointToPoint ? 'metros desde la salida →' : 'metros desde la meta →', width - CHART_MARGIN.right - 2, CHART_MARGIN.top + 2);
@@ -308,6 +331,52 @@
   const isLapChart = element => element.id === 'deltaChart' || element.id === 'speedChart';
   document.addEventListener('pointermove', pointerEvent => { if (isLapChart(pointerEvent.target)) hoverChart({ currentTarget: pointerEvent.target, clientX: pointerEvent.clientX }); });
   document.addEventListener('pointerout', pointerEvent => { if (isLapChart(pointerEvent.target) && state.hoverDistance != null) { state.hoverDistance = null; drawAll(); } });
+  // Mapa: la rueda acerca o aleja hacia el ratón, arrastrar lo mueve y el doble clic vuelve a la vista entera
+  state.mapView = { eventId: null, zoom: 1, panX: 0, panY: 0 };
+  const MAP_MAX_ZOOM = 40;
+  document.addEventListener('wheel', wheelEvent => {
+    const view = state.mapView;
+    if (wheelEvent.target.id !== 'map' || !state.analysis || !view.scale) return;
+    wheelEvent.preventDefault();
+    const zoom = Math.max(1, Math.min(MAP_MAX_ZOOM, view.zoom * (wheelEvent.deltaY < 0 ? 1.25 : 0.8)));
+    if (zoom === 1) { view.panX = 0; view.panY = 0; }
+    else {
+      const box = wheelEvent.target.getBoundingClientRect(), offsetX = wheelEvent.clientX - box.left - view.width / 2, offsetY = wheelEvent.clientY - box.top - view.height / 2;
+      const newScale = view.scale * zoom / view.zoom;
+      view.panX += offsetX / view.scale - offsetX / newScale; view.panY += offsetY / view.scale - offsetY / newScale;
+    }
+    view.zoom = zoom;
+    drawMap();
+  }, { passive: false });
+  document.addEventListener('pointerdown', pointerEvent => {
+    if (pointerEvent.target.id !== 'map' || pointerEvent.button !== 0 || !state.mapView.scale) return;
+    state.mapDrag = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+    pointerEvent.target.setPointerCapture(pointerEvent.pointerId);
+    pointerEvent.target.classList.add('dragging');
+  });
+  document.addEventListener('pointermove', pointerEvent => {
+    if (!state.mapDrag) return;
+    const view = state.mapView;
+    view.panX -= (pointerEvent.clientX - state.mapDrag.x) / view.scale; view.panY -= (pointerEvent.clientY - state.mapDrag.y) / view.scale;
+    state.mapDrag = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+    drawMap();
+  });
+  const endMapDrag = () => { if (state.mapDrag) { state.mapDrag = null; if (byId('map')) byId('map').classList.remove('dragging'); } };
+  document.addEventListener('pointerup', endMapDrag);
+  document.addEventListener('pointercancel', endMapDrag);
+  document.addEventListener('dblclick', clickEvent => {
+    if (clickEvent.target.id !== 'map') return;
+    Object.assign(state.mapView, { zoom: 1, panX: 0, panY: 0 });
+    drawMap();
+  });
+  // El recuadro de comparar se pliega hacia arriba y deja más sitio al mapa; la app lo recuerda
+  document.documentElement.classList.toggle('versus-folded', readStored('swgr.versusFolded', '') === '1');
+  document.addEventListener('click', clickEvent => {
+    if (!clickEvent.target.closest('[data-versus-fold]')) return;
+    const folded = document.documentElement.classList.toggle('versus-folded');
+    writeStored('swgr.versusFolded', folded ? '1' : '');
+    if (state.analysis) requestAnimationFrame(drawAll);
+  });
   const MAP_MODE_BUTTONS = { mapSpeedMode: 'speed', mapGainMode: 'gain', mapLinesMode: 'lines', mapTrailMode: 'trail' };
   document.addEventListener('click', clickEvent => {
     const mode = MAP_MODE_BUTTONS[clickEvent.target.id];

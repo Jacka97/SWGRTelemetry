@@ -17,11 +17,11 @@
 <div class="app">
   <div class="topbar">
     <a class="brand home-link" data-navigate="home" href="#" title="Volver al inicio"><span class="saber" aria-hidden="true"><span class="hilt"></span><span class="blade"></span></span>Telemetría <small>Galactic Racer</small><span class="aurebesh">telemetria</span></a>
+    <span class="transfer-wrap"><button type="button" class="button top-button" id="importButton" title="Importar o exportar tiempos" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v14M4 13l4 4 4-4M16 21V7M12 11l4-4 4 4"/></svg><span class="top-label">Importar / Exportar</span></button></span>
     <nav class="breadcrumbs" id="breadcrumbs"></nav>
     <span class="busy" aria-hidden="true"></span>
     <span class="spacer"></span>
     <button type="button" class="button top-button" data-navigate="home" id="arcadeButton" title="Lista de eventos de Arcade"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7"/><rect x="13.5" y="3.5" width="7" height="7"/><rect x="3.5" y="13.5" width="7" height="7"/><rect x="13.5" y="13.5" width="7" height="7"/></svg><span class="top-label">Arcade</span></button>
-    <button type="button" class="button top-button" id="importButton" title="Añade los archivos .swgr de tus amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg><span class="top-label">Importar tiempos</span></button>
     <input type="file" id="pilotFileInput" accept=".swgr" multiple hidden>
     <button type="button" class="button top-button" data-navigate="social" id="socialButton" title="Compárate con tus amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.9-3.6 3.4-5.6 6.5-5.6s5.6 2 6.5 5.6"/><circle cx="17" cy="9" r="2.7"/><path d="M16.5 14.4c2.6.1 4.4 1.9 5 4.8"/></svg><span class="top-label">Social</span></button>
     <button type="button" class="button top-button options-button" data-navigate="options" id="optionsButton" title="Perfil, archivos de piloto y ajustes de la app"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span class="top-label">Opciones</span></button>
@@ -32,8 +32,11 @@
   <div class="notices" id="notices" role="status"></div>
   <main id="main"></main>
 </div>
+<div class="transfer-overlay" id="transferMenu" hidden><div class="panel transfer-menu"><button type="button" class="button transfer-option" data-transfer="import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg><span><b>Importar tiempos</b><small>Añade los archivos .swgr de tus amigos</small></span></button><button type="button" class="button transfer-option" data-transfer="export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V3M7.5 7.500L12 3l4.500 4.500M4 15v4.500h16V15"/></svg><span><b>Exportar mis tiempos</b><small>Crea tu archivo de piloto para pasárselo</small></span></button></div></div>
 <div class="toast" id="toast" hidden></div>
 <div class="hologram-band" aria-hidden="true"></div>
+<div class="hologram-band band-second" aria-hidden="true"></div>
+<div class="hologram-band band-third" aria-hidden="true"></div>
 <div class="page-loading" id="pageLoading" aria-hidden="true">Cargando telemetría…</div>
 
 <script>

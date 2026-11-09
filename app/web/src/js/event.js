@@ -7,14 +7,14 @@
     const event = state.events.find(item => item.id === state.view.id);
     let html = '<div class="event-view"><div class="event-header"><div class="event-title">' + planetHtml(event.planet) + '<h1 title="' + escapeHtml(event.id) + '">' + escapeHtml(event.title) + '</h1><span class="event-subtitle">' +
       [event.plannedLaps === 1 ? 'Tramo de una vuelta' : event.plannedLaps ? event.plannedLaps + ' vueltas' : '', event.gameRecord && event.gameRecord.attempts ? event.gameRecord.attempts + ' intentos en el juego' : ''].filter(Boolean).join(' · ') + '</span></div>' +
-      '<div class="row" style="display:flex;gap:8px"><button class="button" id="renameButton">Cambiar nombre</button></div></div>';
+      '</div>';
     html += summaryHtml(event);
 
     // Tres columnas: los intentos, las pestañas de análisis y el mapa con la repetición
-    html += '<div class="event-body" id="analysisLayout"><div class="event-left">' + attemptsHtml(event) + '<div class="friends-simple simple-only">' + friendsPanel(event) + '</div></div>';
+    html += '<div class="event-body" id="analysisLayout"><div class="event-left">' + leftPanelHtml(event) + '</div>';
     const friendsTab = friendsPanel(event, true);
     const tabs = EVENT_TABS.filter(([name]) => name === 'loss' ? !!event.sectorLosses : name === 'friends' ? !!friendsTab : true);
-    html += '<section class="panel event-center tryhard-only"><div class="focus-info" id="focusInfo">' + focusInfoHtml(event) + '</div><div class="tab-bar" role="tablist">' +
+    html += '<section class="panel event-center tryhard-only"><div class="panel-header center-header"><h2>Análisis</h2></div><div class="focus-info" id="focusInfo">' + focusInfoHtml(event) + '</div><div class="tab-bar" role="tablist">' +
       tabs.map(([name, label]) => '<button type="button" data-tab="' + name + '" aria-pressed="false">' + label + '</button>').join('') + '</div><div class="tab-panes">';
     html += '<div class="tab-pane" data-pane="laps"><div class="table-scroll"><table id="lapTable"></table></div>' +
       '<div class="note" title="La vuelta ideal une tus mejores sectores entre los intentos marcados, con su trazada: compárate con ella para ver dónde se te escapa el tiempo.">Toca una vuelta para ponerla en A y «B» para compararla con A.</div></div>';
@@ -30,7 +30,7 @@
     if (friendsTab) html += '<div class="tab-pane" data-pane="friends">' + friendsTab + '</div>';
     html += '</div></section>';
     html += '<div class="analysis-map"><div class="panel map-panel"><div class="panel-header"><h2 style="color:var(--map-text)">Trazada</h2><div class="segmented"><button id="mapSpeedMode" aria-pressed="true">Velocidad</button><button id="mapGainMode" aria-pressed="false">Ganancia</button><button id="mapLinesMode" aria-pressed="false">Trazadas</button><button id="mapTrailMode" class="tryhard-only" aria-pressed="false">Estela</button></div></div>' +
-      '<div class="versus-bar" id="versusBar"><label class="versus-kind">Comparar <select id="replayScope" aria-label="Qué comparar"><option value="lap">Vuelta</option></select></label>' +
+      '<div class="versus-bar" id="versusBar"><label class="versus-kind">Comparar <select id="replayScope" aria-label="Qué comparar"><option value="lap">Vuelta</option></select></label>' + '<button type="button" class="fold-button versus-fold" data-versus-fold="1" aria-label="A B"></button>' +
       '<div class="versus-side"><i class="legend-line" style="background:var(--accent)"></i><span class="versus-tag">A</span><select id="compareA" class="tryhard-only" aria-label="A"></select><b id="selectedA" class="simple-only">—</b><div class="versus-sub"><span class="numeric" id="selectedTimeA"></span><span class="boost-tag" id="boostTagA" style="visibility:hidden"></span></div></div>' +
       '<div class="versus-side"><i class="legend-line" id="legendLineB" style="background:var(--reference)"></i><span class="versus-tag">B</span><select id="compareB" class="tryhard-only" aria-label="B"></select><select id="simpleRival" class="simple-only" aria-label="Contra quién"></select><b id="selectedB" class="visually-hidden">—</b><div class="versus-sub"><span class="numeric" id="selectedTimeB"></span><span class="versus-gap" id="versusGap"></span><span class="boost-tag" id="boostTagB" style="visibility:hidden"></span></div></div>' +
       '</div>' +
@@ -45,18 +45,6 @@
     html += '</div></div>';
     byId('main').innerHTML = html;
 
-    byId('renameButton').onclick = async () => {
-      // An app window has no dialogs: the title is edited in place
-      const heading = document.querySelector('.event-header h1');
-      heading.contentEditable = 'true'; heading.focus();
-      document.getSelection().selectAllChildren(heading);
-      heading.onblur = async () => {
-        heading.contentEditable = 'false';
-        const name = heading.textContent.trim();
-        await saveValue('eventName', event.id, name === describeEventCode(event.id) || name === officialEventName(event.id) ? '' : name);
-      };
-      heading.onkeydown = keyEvent => { if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); heading.blur(); } };
-    };
     if (byId('gameRecordSave')) byId('gameRecordSave').onclick = async () => {
       const total = parseTime(byId('gameTotalInput').value), lap = parseTime(byId('gameLapInput').value);
       if (Number.isNaN(total) || Number.isNaN(lap)) { byId('gameRecordMessage').innerHTML = '<span class="loss">Usa el formato 1:21.500 o 19.800</span>'; return; }
@@ -141,6 +129,23 @@
     return event.sessions.filter(session => session.telemetryFile).pop() || null;
   }
   // Lista compacta de intentos: fecha, total y tiempos de vuelta; pulsar uno lo elige y la casilla suma otros al análisis
+  // Columna izquierda: en modo simple, Intentos y Amigos son pestañas del mismo panel
+  state.simpleLeftTab = 'attempts';
+  function leftPanelHtml(event) {
+    const friends = friendsPanel(event, true), showFriends = friends && state.simpleLeftTab === 'friends';
+    if (!friends) return attemptsHtml(event);
+    const tab = (name, label, pressed) => '<button type="button" data-left-tab-button="' + name + '" aria-pressed="' + pressed + '">' + label + '</button>';
+    const tabs = '<div class="tab-bar simple-only">' + tab('attempts', 'Intentos', !showFriends) + tab('friends', 'Amigos', !!showFriends) + '</div>';
+    return attemptsHtml(event).replace('class="panel attempts-panel"', showFriends ? 'class="panel attempts-panel showing-friends"' : 'class="panel attempts-panel"')
+      .replace('<div class="attempt-list">', tabs + '<div class="attempt-list">').replace('<div class="note">', '<div class="simple-friends simple-only">' + friends + '</div><div class="note">');
+  }
+  document.addEventListener('click', clickEvent => {
+    const button = clickEvent.target.closest('[data-left-tab-button]');
+    if (!button) return;
+    state.simpleLeftTab = button.dataset.leftTabButton;
+    button.closest('.attempts-panel').classList.toggle('showing-friends', state.simpleLeftTab === 'friends');
+    button.parentElement.querySelectorAll('[data-left-tab-button]').forEach(item => item.setAttribute('aria-pressed', item === button));
+  });
   function attemptsHtml(event) {
     const selected = selectedSessions(event), focused = focusedSession(event);
     let html = '<section class="panel attempts-panel"><div class="panel-header"><h2>Intentos</h2><span class="muted" title="Pulsa un intento para ver sus datos y marca la casilla para sumar otros al análisis. Se conservan los últimos ' + state.data.attemptsToKeep +
@@ -175,10 +180,10 @@
     return '<b class="numeric">' + escapeHtml((session.date || session.id).slice(0, 16)) + '</b>' +
       '<span class="numeric' + (isBestSession ? ' best' : '') + '">' + (session.total ? formatTime(session.total) + (session.totalCalculated ? '*' : '') : '—') + '</span>' +
       (session.total && session.target ? '<span class="muted">objetivo</span><span class="numeric ' + (session.total <= session.target ? 'gain' : 'loss') + '">' + formatSigned(session.total - session.target) + '</span>' : '') +
-      (isBestSession ? '<span class="tag highlight">récord</span>' : '') + (hasBestLap ? '<span class="tag highlight">mejor vuelta</span>' : '') +
+      '<div class="focus-tags">' + (isBestSession ? '<span class="tag highlight">récord</span>' : '') + (hasBestLap ? '<span class="tag highlight">mejor vuelta</span>' : '') +
       (session.success == null ? ''
         : (session.total > 0 && session.target > 0 && session.total <= session.target) ? '<span class="tag success">nº1 batido</span>'
-        : session.success ? '<span class="tag">superado</span>' : '<span class="tag failure">no superado</span>');
+        : session.success ? '<span class="tag">superado</span>' : '<span class="tag failure">no superado</span>') + '</div>';
   }
   // Pulsar un intento lo elige: la columna del centro y el mapa pasan a mostrar sus datos (en modo simple se suma a los cargados)
   function focusAttempt(event, sessionId) {

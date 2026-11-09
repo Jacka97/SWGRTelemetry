@@ -47,3 +47,32 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
 .race-panel-colors input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid var(--line-strong); background: none; cursor: pointer; }
 .options-page .race-panel-rows { flex-wrap: wrap; }
 .options-page .group input[type="range"] { width: 100%; max-width: 260px; accent-color: var(--accent); }
+
+/* Iconos de Opciones: uno por apartado y uno por ajuste, para encontrarlos sin leer */
+.option-icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.options-nav button { display: flex; align-items: center; gap: 10px; }
+.options-page .group > span:first-child { display: flex; align-items: center; gap: 7px; }
+.options-page .group > span:first-child .option-icon { width: 16px; height: 16px; color: var(--accent); }
+
+.tick-option { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
+.tick-option input { width: 16px; height: 16px; accent-color: var(--accent); }
+/* Con el tick puesto mandan los ajustes de los botones; los del fondo se conservan, pero no se tocan */
+.options-page .group.linked { opacity: .4; pointer-events: none; }
+
+/* Apariencia de la app: en columnas, para que quepa entera sin desplazar la ventana */
+@media (min-width: 901px) {
+  .appearance-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 22px; align-content: start; }
+  .appearance-panel > :not(.group) { grid-column: 1 / -1; }
+  .appearance-panel > .group { margin-bottom: 4px; }
+}
+
+/* App de escritorio: la ventana nunca se desplaza, solo el contenido que no cabe bajo la barra de arriba */
+@media (min-width: 901px) {
+  body { overflow: hidden; }
+  .app { height: 100vh; min-height: 0; }
+  main { min-height: 0; overflow-y: auto; }
+  /* Opciones: el menú y el título quietos; solo se desplaza el apartado que no quepa */
+  main:has(> .options-page) { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .options-page { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+  .options-content { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
+}

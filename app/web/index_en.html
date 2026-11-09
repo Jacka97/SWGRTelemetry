@@ -162,8 +162,26 @@ tr.clickable:hover td { background: var(--surface-hover); }
 .empty-state { padding: 30px; text-align: center; color: var(--text-muted); display: grid; gap: 8px; justify-items: center; }
 .empty-state b { color: var(--text); font-family: var(--aurebesh-font) var(--font-display); font-size: 1.1rem; letter-spacing: 0.1em; text-transform: uppercase; }
 
+/* Ventana de importar y exportar: en medio de la pantalla, por encima de todo y con el fondo oscurecido */
+.transfer-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, .72); }
+.transfer-overlay[hidden] { display: none; }
+.transfer-wrap { position: relative; flex: none; }
+.transfer-menu { display: grid; gap: 12px; width: min(460px, 100%); padding: 20px; background: var(--panel); }
+.transfer-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left; text-transform: none; letter-spacing: 0.02em; }
+.transfer-option svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.transfer-option b { display: block; font-size: 0.86rem; }
+.transfer-option small { display: block; font-size: 0.74rem; font-weight: 400; color: var(--text-muted); }
+/* La página actual, marcada en la barra */
+.top-button[aria-pressed="true"] { background: linear-gradient(180deg, var(--selected-high), var(--selected-low)); border-color: var(--accent); color: #fff; }
 /* Home */
-.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+/* Portada: una fila por planeta que se desplaza de lado */
+.event-carousel { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.event-carousel > .event-grid { grid-column: 2; }
+.carousel-button { background: none; border: 1px solid var(--line-strong); color: var(--text-muted); font-size: 1.1rem; line-height: 1; padding: 22px 8px; cursor: pointer; }
+.carousel-button:hover { color: var(--text); border-color: var(--accent); }
+.carousel-button[hidden] { display: none; }
+.event-grid { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; padding: 10px 8px 14px; scrollbar-width: thin; }
+.event-grid > .event-card { flex: 0 0 340px; scroll-snap-align: start; }
 .event-card { padding: 16px; display: grid; gap: 12px; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s, transform .15s; }
 .event-card:hover { border-color: var(--line-strong); box-shadow: inset 0 0 40px color-mix(in srgb, var(--accent) 8%, transparent); transform: translateY(-1px); }
 .event-card:hover::before { width: 90px; opacity: 1; }
@@ -421,6 +439,35 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
 .race-panel-colors input[type="color"] { width: 34px; height: 24px; padding: 0; border: 1px solid var(--line-strong); background: none; cursor: pointer; }
 .options-page .race-panel-rows { flex-wrap: wrap; }
 .options-page .group input[type="range"] { width: 100%; max-width: 260px; accent-color: var(--accent); }
+
+/* Iconos de Opciones: uno por apartado y uno por ajuste, para encontrarlos sin leer */
+.option-icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.options-nav button { display: flex; align-items: center; gap: 10px; }
+.options-page .group > span:first-child { display: flex; align-items: center; gap: 7px; }
+.options-page .group > span:first-child .option-icon { width: 16px; height: 16px; color: var(--accent); }
+
+.tick-option { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
+.tick-option input { width: 16px; height: 16px; accent-color: var(--accent); }
+/* Con el tick puesto mandan los ajustes de los botones; los del fondo se conservan, pero no se tocan */
+.options-page .group.linked { opacity: .4; pointer-events: none; }
+
+/* Apariencia de la app: en columnas, para que quepa entera sin desplazar la ventana */
+@media (min-width: 901px) {
+  .appearance-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 22px; align-content: start; }
+  .appearance-panel > :not(.group) { grid-column: 1 / -1; }
+  .appearance-panel > .group { margin-bottom: 4px; }
+}
+
+/* App de escritorio: la ventana nunca se desplaza, solo el contenido que no cabe bajo la barra de arriba */
+@media (min-width: 901px) {
+  body { overflow: hidden; }
+  .app { height: 100vh; min-height: 0; }
+  main { min-height: 0; overflow-y: auto; }
+  /* Opciones: el menú y el título quietos; solo se desplaza el apartado que no quepa */
+  main:has(> .options-page) { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .options-page { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+  .options-content { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
+}
 /* Loading screen */
 .loader { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 18px;
   background: radial-gradient(800px 420px at 50% 40%, color-mix(in srgb, var(--accent-deep) 22%, transparent), transparent 70%), var(--background); transition: opacity .45s ease, visibility .45s; }
@@ -463,15 +510,15 @@ main.pending { opacity: 0; pointer-events: none; }
 .tile .detail { font-size: 0.82rem; color: var(--text-muted); }
 .tile input { width: 100%; background: var(--input-background); border: 1px solid var(--line-strong); border-radius: 0; padding: 4px 7px; font-family: var(--font-data); }
 .tile input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent); outline: none; }
-.tile .row { display: flex; gap: 6px; align-items: center; }
 .two-columns { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 1100px) { .two-columns { grid-template-columns: minmax(0, 1fr); } }
 /* Página del evento: cabecera, franja de resumen y tres columnas (intentos, pestañas, mapa) que llenan la ventana */
 .event-view { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
-.event-body { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(380px, 0.9fr); gap: 12px; min-height: 0; }
+.event-body { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(380px, 0.9fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; gap: 12px; min-height: 0; }
 .event-left, .event-center, .analysis-map { min-height: 0; min-width: 0; }
-.event-left { display: grid; grid-template-rows: minmax(120px, 1fr) auto; gap: 10px; overflow: hidden; }
-.event-left .friends-simple { max-height: 40vh; overflow: auto; }
+.event-left { display: grid; grid-template-rows: minmax(120px, 1fr); overflow: hidden; }
+.attempts-panel > .panel-header { flex-wrap: nowrap; }
+.attempts-panel > .panel-header > .muted { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .attempts-panel { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
 .attempt-list { overflow: auto; min-height: 0; display: grid; gap: 3px; align-content: start; padding-right: 2px; }
 .attempt { display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; row-gap: 1px; align-items: center; padding: 5px 8px; border: 1px solid var(--line);
@@ -483,7 +530,9 @@ main.pending { opacity: 0; pointer-events: none; }
 .attempt-total { font-size: 0.95rem; text-align: right; }
 .attempt-laps { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 0 9px; color: var(--text-muted); font-size: 0.74rem; }
 .event-center { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
-.focus-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 0.84rem; min-height: 1.6em; }
+/* Datos del intento en columnas fijas y etiquetas en su propia fila: siempre en el mismo sitio, sea cual sea el evento */
+.focus-info { display: grid; grid-template-columns: 10.5rem 5.5rem auto 5.5rem; justify-content: start; align-items: center; gap: 4px 10px; font-size: 0.84rem; min-height: 1.6em; }
+.focus-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; min-height: 1.7em; align-items: center; }
 .focus-info .tag { margin-left: 0; }
 .tab-bar { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .tab-bar button { font-family: var(--aurebesh-font) var(--font-display); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem;
@@ -496,7 +545,14 @@ html .tab-bar button { border-radius: 999px; }
 .tab-pane.active { display: grid; }
 .friends-pane { display: grid; gap: 8px; }
 .pane-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.analysis-map { overflow: auto; }
+.analysis-map { overflow-x: hidden; overflow-y: auto; }
+.analysis-map .map-panel { min-width: 0; box-sizing: border-box; }
+.versus-bar { position: relative; }
+.versus-bar select { min-width: 0; max-width: 100%; }
+.versus-fold { position: absolute; top: 6px; right: 6px; margin: 0; }
+.versus-fold::before { content: "▾"; }
+html.versus-folded .versus-fold::before { content: "▸"; }
+html.versus-folded .versus-side { display: none; }
 .analysis-map .map-panel { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; }
 .analysis-map .map-box { flex: 1 1 0; min-height: 180px; aspect-ratio: auto; }
 /* Por debajo de 1250 px: los intentos arriba y, debajo, las pestañas y el mapa */
@@ -504,6 +560,37 @@ html .tab-bar button { border-radius: 999px; }
   html:not(.mode-simple) .event-body { grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr); grid-template-rows: 170px minmax(0, 1fr); }
   html:not(.mode-simple) .event-left { grid-column: 1 / -1; }
 }
+/* El panel central solo enseña su botón de plegar, en la esquina; el título sale al plegarlo */
+.center-header { position: absolute; top: 8px; right: 8px; z-index: 3; border: 0; padding: 0; margin: 0; background: none; }
+.event-center:not(.folded) > .center-header > h2 { display: none !important; }
+.event-center:not(.folded) > .focus-info { padding-right: 44px; }
+/* Columnas: al plegar una se queda en una tira y las demás ocupan el sitio */
+@media (min-width: 1251px) {
+  html:not(.mode-simple) .event-body { --left: 300px; --center: minmax(0, 1fr); --right: minmax(380px, 0.9fr); grid-template-columns: var(--left) var(--center) var(--right); }
+  html:not(.mode-simple) .event-body:has(> .event-left > .attempts-panel.folded) { --left: 46px; }
+  html:not(.mode-simple) .event-body:has(> .event-center.folded) { --center: 46px; --right: minmax(0, 1fr); }
+  html:not(.mode-simple) .event-body:has(> .analysis-map > .map-panel.folded) { --right: 46px; }
+  html:not(.mode-simple) .event-body:has(> .event-center.folded):has(> .analysis-map > .map-panel.folded) { --left: minmax(0, 1fr); }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+}
+@media (min-width: 901px) {
+  html.mode-simple .event-body:has(> .event-left > .attempts-panel.folded) { grid-template-columns: 46px minmax(0, 1fr); }
+  html.mode-simple .event-body:has(> .analysis-map > .map-panel.folded) { grid-template-columns: minmax(0, 1fr) 46px; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+}
+/* Modo simple: Intentos y Amigos, pestañas del mismo panel */
+html.mode-simple .attempts-panel { display: flex; flex-direction: column; gap: 8px; }
+html.mode-simple .attempts-panel .attempt-list, html.mode-simple .simple-friends { flex: 1 1 0; min-height: 0; overflow: auto; }
+.attempts-panel.showing-friends .attempt-list { display: none; }
+.attempts-panel:not(.showing-friends) .simple-friends { display: none; }
 /* Modo simple: la lista (y los amigos debajo) a la izquierda y el mapa a la derecha */
 html.mode-simple .event-body { grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); }
 /* Pantalla normal (más de 900 px): la página no se desplaza, las columnas sí */
@@ -580,6 +667,8 @@ canvas { display: block; width: 100%; }
 .toast { position: fixed; right: 18px; bottom: 18px; background: var(--surface); border: 1px solid var(--line-strong); padding: 10px 14px;
   box-shadow: 0 8px 30px rgba(0,0,0,.6), 0 0 20px color-mix(in srgb, var(--accent) 15%, transparent); }
 .note { font-size: 0.82rem; color: var(--text-muted); max-width: 90ch; }
+#map { cursor: grab; touch-action: none; }
+#map.dragging { cursor: grabbing; }
 /* Notices (versions, safe mode) */
 .notices { display: grid; gap: 6px; padding: 0 22px; max-width: 1500px; width: 100%; margin: 0 auto; }
 .notices:not(:empty) { padding-top: 14px; }
@@ -668,6 +757,113 @@ html.hologram.hologram-strong .hologram-band { height: 42vh; filter: brightness(
 html.hologram.hologram-strong .panel, html.hologram.hologram-strong .event-card, html.hologram.hologram-strong .tile, html.hologram.hologram-strong .summary-strip {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hologram) 22%, transparent), 0 0 30px color-mix(in srgb, var(--hologram) 12%, transparent); }
 html.no-animations *, html.no-animations *::before, html.no-animations *::after { transition: none !important; animation: none !important; }
+
+/* Holograma: la tarjeta deja de ser una caja. Sin fondo ni borde, la imagen del planeta se funde con la página y solo
+   quedan los bloques flotando a distintas alturas, translúcidos, con esquinas en corchete y un halo de luz. */
+html.hologram .event-grid { padding: 26px 22px 38px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); }
+html.hologram .event-card, html.hologram.hologram-strong .event-card { --bracket: var(--hologram); --lift: 1; overflow: visible; transform-style: preserve-3d; background: none; border: 0; box-shadow: none;
+  transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform .12s ease-out; }
+html.hologram .event-card:hover { box-shadow: none; transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); }
+html.hologram .event-card::before { display: none; }
+html.hologram .event-card.tilting { --bracket: var(--accent); --lift: 1.8; z-index: 2; }
+html.hologram .event-card > .event-art { border: 0; opacity: .75; transform: translateZ(calc(6px * var(--lift))); transition: transform .15s ease-out;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent);
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted) { --depth: 40px; }
+html.hologram .event-card > .event-figures { --depth: 58px; }
+html.hologram .event-card > .muted { transform: translateZ(calc(22px * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted), html.hologram .event-card > .event-figures > .figure {
+  padding: 8px 10px; border: 0; box-shadow: none;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--bracket) 55%, transparent);
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 16%, transparent), transparent 100%); }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted) { transform: translateZ(calc(var(--depth) * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card > .event-figures { transform-style: preserve-3d; transform: translateZ(calc(var(--depth) * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), color-mix(in srgb, var(--hologram) 16%, transparent), transparent 50%); mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
+html.hologram .event-card.tilting::after { opacity: 1; }
+html.hologram.no-animations .event-card { transition: none; }
+
+/* Holograma, vista de tiempos: lo mismo que las tarjetas, sin caja y con los datos a distintas alturas */
+html.hologram .times-grid { gap: 16px; padding: 10px 4px 16px; }
+html.hologram .time-tile, html.hologram .time-tile.clickable:hover { --bracket: var(--hologram); --lift: 1; position: relative; border: 0; box-shadow: none; transform-style: preserve-3d; padding: 12px 14px;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform .12s ease-out;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 14%, transparent), transparent 100%); }
+html.hologram .time-tile.tilting { --bracket: var(--accent); --lift: 2; z-index: 2; }
+html.hologram .time-tile > * { transition: transform .15s ease-out; text-shadow: 0 0 10px color-mix(in srgb, var(--bracket) 45%, transparent); }
+html.hologram .time-tile > .time-tile-title { transform: translateZ(calc(16px * var(--lift))); }
+html.hologram .time-tile > .time-tile-record { transform: translateZ(calc(30px * var(--lift))); }
+html.hologram .time-tile > .time-tile-detail { transform: translateZ(calc(10px * var(--lift))); }
+html.hologram .time-tile > .time-tile-friends { transform: translateZ(calc(20px * var(--lift))); border-top: 0; }
+html.hologram.no-animations .time-tile { transition: none; }
+
+/* Holograma en toda la app: paneles y menús sin caja, solo esquinas en corchete y un relleno que se apaga hacia el borde */
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar), html.hologram.hologram-strong :is(.panel, .tile, .summary-strip) { --bracket: var(--hologram); border: 0; box-shadow: none; border-radius: 0;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 8%, transparent), transparent 100%); }
+html.hologram :is(.panel, .tile, .summary-strip)::before { display: none; }
+html.hologram .attempt:not(.focused) { background: none; border-color: color-mix(in srgb, var(--hologram) 18%, transparent); }
+html.hologram tr.group-row td { background: none; }
+
+/* Holograma: esquinas en corchete redondeadas. Es un borde completo con bordes romos del que solo se dejan ver las cuatro esquinas */
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar, .time-tile, .event-card > div:not(.event-art):not(.event-figures):not(.muted), .event-card > .event-figures > .figure) { position: relative; --corner: 16px; --round: 4px; border-radius: var(--round); }
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar, .time-tile, .event-card > div:not(.event-art):not(.event-figures):not(.muted), .event-card > .event-figures > .figure)::before { content: ""; display: block; position: absolute; inset: 0; left: 0; top: 0; width: auto; height: auto; pointer-events: none; opacity: 1; clip-path: none; background: none;
+  box-sizing: border-box; border: 2px solid var(--bracket); border-radius: var(--round);
+  -webkit-mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat;
+  mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat; }
+/* Holograma: botones y apartados de Opciones como las tarjetas, flotando y girando hacia el ratón */
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button) { --bracket: var(--hologram); --corner: 9px; --round: 3px; position: relative; border: 0; border-radius: var(--round); box-shadow: none; clip-path: none;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 12%, transparent), transparent 100%);
+  transform: perspective(500px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform .12s ease-out; }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)::before { content: ""; position: absolute; inset: 0; pointer-events: none; box-sizing: border-box; border: 2px solid var(--bracket); border-radius: var(--round);
+  -webkit-mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat;
+  mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat; }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button).tilting, html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { --bracket: var(--accent); }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { color: #fff; background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 100%); }
+html.hologram .options-nav { gap: 10px; }
+html.hologram.no-animations :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button) { transition: none; }
+/* Galactic Racer: mismos tamaños de títulos y botones que los demás temas (su letra es más ancha) */
+html[data-theme="galactic"] h2 { display: inline-flex; flex-direction: row; gap: 8px; align-items: center; padding: 0; border: 0; font-size: 0.76rem; }
+html[data-theme="galactic"] h2 .aurebesh { order: 0; margin: 0; }
+html[data-theme="galactic"] :is(.button, .top-button) { letter-spacing: 0.05em; }
+
+/* Holograma: lo seleccionado se ve de un vistazo, relleno de color (en algunos temas el color de los corchetes y el de acento casi coinciden) */
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { color: #fff; font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 62%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Holograma: filtros todos iguales, sin el contorno del grupo */
+html.hologram .filter-group { border: 0; background: none; box-shadow: none; gap: 6px; overflow: visible; border-radius: 0; }
+html.hologram .filter-group button { border: 0 !important; border-radius: 3px !important; }
+html.hologram .filter-group::before { display: none; }
+html.hologram .filters { gap: 6px; }
+html.hologram .filters button, html.hologram .filter-group button { flex: 0 0 auto; min-width: 112px; padding: 6px 14px; margin: 0; text-align: center; }
+
+/* Holograma: el menú rápido flota sobre la página, así que lleva fondo para que se lea */
+html.hologram .transfer-menu { background: var(--panel); }
+html.hologram .transfer-option { background: none; }
+
+/* La opción seleccionada es un pequeño holograma: líneas de barrido fijas, líneas de luz que bajan y halo.
+   La posición de la luz es una sola variable animada en la raíz, así que todos los botones van al unísono. */
+@property --selected-sweep { syntax: '<number>'; inherits: true; initial-value: 0; }
+@keyframes selectedSweep { from { --selected-sweep: 0; } to { --selected-sweep: 1; } }
+html.selected-holo { animation: selectedSweep var(--selected-speed, 2.8s) linear infinite; }
+html.selected-holo.no-animations { animation: none; }
+html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"] { position: relative; overflow: hidden; color: #fff;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px var(--selected-gap, 3px)), linear-gradient(color-mix(in srgb, var(--accent) 62%, transparent), color-mix(in srgb, var(--accent) 62%, transparent));
+  text-shadow: 0 0 8px color-mix(in srgb, #fff 70%, transparent), 1px 0 color-mix(in srgb, #ff2bd0 35%, transparent), -1px 0 color-mix(in srgb, #2be3ff 35%, transparent); }
+html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 200%; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(180deg, transparent 38%, rgba(255, 255, 255, .42) 50%, transparent 62%) 0 0 / 100% calc(50% / var(--selected-bands, 1)) repeat-y;
+  transform: translateY(calc((var(--selected-sweep) - 1) * 50% / var(--selected-bands, 1))); }
+html.selected-holo.no-animations :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { display: none; }
+/* Banda de luz del fondo: velocidad y número de líneas configurables */
+html.hologram .hologram-band, html.hologram.hologram-strong .hologram-band { animation-duration: var(--page-speed, 7s); }
+html.hologram .hologram-band.band-second, html.hologram .hologram-band.band-third { display: none; }
+html.hologram.page-bands-2:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.5); }
+html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.3333); }
+html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-third { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.6667); }
 </style>
 </head>
 <body>
@@ -679,11 +875,11 @@ html.no-animations *, html.no-animations *::before, html.no-animations *::after 
 <div class="app">
   <div class="topbar">
     <a class="brand home-link" data-navigate="home" href="#" title="Back to home"><span class="saber" aria-hidden="true"><span class="hilt"></span><span class="blade"></span></span>Telemetry <small>Galactic Racer</small><span class="aurebesh">telemetry</span></a>
+    <span class="transfer-wrap"><button type="button" class="button top-button" id="importButton" title="Import or export times" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v14M4 13l4 4 4-4M16 21V7M12 11l4-4 4 4"/></svg><span class="top-label">Import / Export</span></button></span>
     <nav class="breadcrumbs" id="breadcrumbs"></nav>
     <span class="busy" aria-hidden="true"></span>
     <span class="spacer"></span>
     <button type="button" class="button top-button" data-navigate="home" id="arcadeButton" title="Arcade event list"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7"/><rect x="13.5" y="3.5" width="7" height="7"/><rect x="3.5" y="13.5" width="7" height="7"/><rect x="13.5" y="13.5" width="7" height="7"/></svg><span class="top-label">Arcade</span></button>
-    <button type="button" class="button top-button" id="importButton" title="Add your friends' .swgr files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg><span class="top-label">Import times</span></button>
     <input type="file" id="pilotFileInput" accept=".swgr" multiple hidden>
     <button type="button" class="button top-button" data-navigate="social" id="socialButton" title="Compare yourself with your friends"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.9-3.6 3.4-5.6 6.5-5.6s5.6 2 6.5 5.6"/><circle cx="17" cy="9" r="2.7"/><path d="M16.5 14.4c2.6.1 4.4 1.9 5 4.8"/></svg><span class="top-label">Social</span></button>
     <button type="button" class="button top-button options-button" data-navigate="options" id="optionsButton" title="Profile, pilot files and app settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span class="top-label">Options</span></button>
@@ -694,8 +890,11 @@ html.no-animations *, html.no-animations *::before, html.no-animations *::after 
   <div class="notices" id="notices" role="status"></div>
   <main id="main"></main>
 </div>
+<div class="transfer-overlay" id="transferMenu" hidden><div class="panel transfer-menu"><button type="button" class="button transfer-option" data-transfer="import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg><span><b>Import times</b><small>Add your friends' .swgr files</small></span></button><button type="button" class="button transfer-option" data-transfer="export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V3M7.5 7.500L12 3l4.500 4.500M4 15v4.500h16V15"/></svg><span><b>Export my times</b><small>Create your pilot file to share it</small></span></button></div></div>
 <div class="toast" id="toast" hidden></div>
 <div class="hologram-band" aria-hidden="true"></div>
+<div class="hologram-band band-second" aria-hidden="true"></div>
+<div class="hologram-band band-third" aria-hidden="true"></div>
 <div class="page-loading" id="pageLoading" aria-hidden="true">Loading telemetry…</div>
 
 <script>
@@ -889,7 +1088,9 @@ function analyzeSession(route, samples, name, rolling) {
   // Open stage (point to point): the start is the first checkpoint in the driving direction and each
   // lap goes from its crossing to the finish; on a circuit, from finish to finish.
   const firstPoint = points[0], lastPoint = points[points.length - 1];
-  const isPointToPoint = Math.hypot(lastPoint[1] - firstPoint[1], lastPoint[2] - firstPoint[2]) > 2000 && finishCheckpoint !== null;
+  // Una sola pasada: el trazado acaba cerca de donde empieza, pero la meta oficial solo se cruza una vez (es un tramo, no un circuito)
+  const singlePass = finishCheckpoint !== null && finishTimes.length === 1 && officialTimes.some(officialTime => Math.abs(officialTime - finishTimes[0]) < 1.0);
+  const isPointToPoint = (Math.hypot(lastPoint[1] - firstPoint[1], lastPoint[2] - firstPoint[2]) > 2000 && finishCheckpoint !== null) || singlePass;
   let startCheckpoint = null;
   if (isPointToPoint) startCheckpoint = checkpointDistances.map((_, checkpoint) => checkpoint).find(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] < finishDistance) ?? null;
   let originDistance = startCheckpoint !== null ? checkpointDistances[startCheckpoint] : finishDistance;
@@ -899,7 +1100,9 @@ function analyzeSession(route, samples, name, rolling) {
   if (isPointToPoint && rolling && finishTimes.length) {
     const end = finishTimes[0];
     const goMarker = samples.find(sample => sample.go);
-    const goTime = rolling.total > 0 ? end - rolling.total : (goMarker ? goMarker.time : null);
+    // El total del juego ya lleva descontados los puntos de Precisión: se le suman para llegar al GO
+    const allBonus = samples.reduce((sum, sample) => sum + (sample.bonus || 0), 0);
+    const goTime = rolling.total > 0 ? end - rolling.total - allBonus : (goMarker ? goMarker.time : null);
     const gateTime = rolling.officialLap > 0 ? end - rolling.officialLap : null;
     const gate = gateTime === null ? null : crossings.filter(crossing => crossing.checkpoint !== finishCheckpoint && Math.abs(crossing.time - gateTime) < 0.5)
       .sort((first, second) => Math.abs(first.time - gateTime) - Math.abs(second.time - gateTime))[0];
@@ -910,7 +1113,8 @@ function analyzeSession(route, samples, name, rolling) {
       startCheckpoint = gate.checkpoint;
       originDistance = goSample.distance;
       const gateDistance = checkpointDistances[gate.checkpoint];
-      sectorCheckpoints = [gate.checkpoint].concat(checkpointDistances.map((_, checkpoint) => checkpoint)
+      // Si la puerta queda antes del GO no es el final de ningún sector
+      sectorCheckpoints = (gate.time < goTime ? [] : [gate.checkpoint]).concat(checkpointDistances.map((_, checkpoint) => checkpoint)
         .filter(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] > gateDistance));
       rollingSpan = [goTime, end];
     }
@@ -949,7 +1153,7 @@ function analyzeSession(route, samples, name, rolling) {
     const official = officialTimes.some(officialTime => Math.abs(officialTime - end) < 1.0);
     const incident = repeatedCrossings > 0 || resetTimes.some(resetTime => resetTime > start && resetTime <= end);
     // Trace: distance from the finish line and lap time
-    const trace = [];
+    const trace = [], bonusPoints = [];   // bonusPoints: dónde ganó puntos de Precisión en esta vuelta
     for (const sample of samples) {
       if (sample.time < start - 0.05 || sample.time > end + 0.05) continue;
       let lapDistance;
@@ -959,10 +1163,11 @@ function analyzeSession(route, samples, name, rolling) {
         if (sample.time - start < 2 && lapDistance > 0.8 * length) lapDistance -= length;
         if (end - sample.time < 2 && lapDistance < 0.2 * length) lapDistance += length;
       }
+      if (sample.bonus && sample.time > start && sample.time <= end) bonusPoints.push({ distance: lapDistance, x: sample.x, y: sample.y, value: sample.bonus });
       trace.push({ distance: lapDistance, time: sample.time - start - bonusBetween(start, sample.time), x: sample.x, y: sample.y, speed: sample.speed, boost: sample.boost || '', trail: sample.trail || '', z: sample.z, heading: sample.heading });
     }
     laps.push({ session: name, number: laps.length + 1, start, end, time, bonus: lapBonus, sectors: allSectors ? sectors : null,
-      measuredSectors: sectors, official, incident, trace });
+      measuredSectors: sectors, official, incident, trace, bonusPoints });
   }
   return { name, direction, routeLength: length, finishDistance, finishCheckpoint, startCheckpoint, isPointToPoint, originDistance, rolling: !!rollingSpan,
     span: isPointToPoint ? finishDistance - originDistance : length, sectorCount, sectorStarts, laps };
@@ -1121,9 +1326,9 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   // The planet (shown in its own font) and the event name without the planet
   function eventTitles(data, eventId, gameRecord) {
     const planet = planetOf(gameRecord, eventId);
-    const title = data.eventNames[eventId] || officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet);
+    const title = officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet);
     // For cards and lists that already show the vehicle on its own
-    const shortTitle = data.eventNames[eventId] || officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet, true);
+    const shortTitle = officialEventName(eventId) || (gameRecord && gameRecord.name) || describeEventCode(eventId, !!planet, true);
     return { planet, title, shortTitle };
   }
   // Aurebesh: only the lowercase letters a-z (that font's capitals and digits are other symbols)
@@ -1165,7 +1370,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     const sessions = event.sessions.slice().sort((first, second) => first.id.localeCompare(second.id));
     event.sessions = sessions;
     event.gameRecord = gameRecordOf(data, event.id);
-    event.name = data.eventNames[event.id] || (officialEventName(event.id) && [planetOf(event.gameRecord, event.id), officialEventName(event.id)].filter(Boolean).join(' · ')) || gameEventName(event.gameRecord, event.id) || describeEventCode(event.id);
+    event.name = (officialEventName(event.id) && [planetOf(event.gameRecord, event.id), officialEventName(event.id)].filter(Boolean).join(' · ')) || gameEventName(event.gameRecord, event.id) || describeEventCode(event.id);
     Object.assign(event, eventTitles(data, event.id, event.gameRecord));
     event.lastDate = sessions.length ? sessions[sessions.length - 1].date || sessions[sessions.length - 1].id : '';
     event.plannedLaps = Math.max(0, ...sessions.map(session => session.plannedLaps || 0));
@@ -1179,9 +1384,10 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     }
     event.rolling = event.plannedLaps === 1 && sessions.some(session => (session.laps || []).some(lap => lap.rolling));
     if (event.rolling) for (const session of sessions) for (const lap of session.laps || []) {
-      if (lap.rolling) continue;
+      // Arranque lanzado con Precisión de antes del arreglo: los puntos se descontaron dos veces, cuenta el total
+      if (lap.rolling) { if (lap.bonusEvent && session.total > 0 && Math.abs(session.total - lap.time) > 1) { lap.time = session.total; lap.sectors = []; lap.valid = false; } continue; }
       lap.rolling = true; lap.officialLap = lap.time; lap.sectors = []; lap.valid = false;
-      if (session.total > lap.time + 1) lap.time = session.total; else lap.official = false;   // sin total no se puede comparar
+      if (session.total > 0 && Math.abs(session.total - lap.time) > 1) lap.time = session.total; else lap.official = false;   // sin total no se puede comparar (la puerta puede quedar antes o después del GO)
     }
     event.attempts = sessions.length;
     event.completeSessions = sessions.filter(session => session.total > 0);
@@ -1283,7 +1489,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     main.classList.add('pending'); topBar.classList.add('loading');
     const slowNotice = setTimeout(() => byId('pageLoading').classList.add('visible'), 250);
     render();
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); main.scrollTop = 0;
     await Promise.race([Promise.resolve(state.analysisLoading), sleep(6000)]).catch(() => {});
     clearTimeout(slowNotice);
     if (state.currentNavigation !== navigation) return;
@@ -1313,6 +1519,9 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (!state.data) return;
     state.events = buildEvents(state.data);
     renderBreadcrumbs();
+    // La página en la que estás queda marcada en la barra de arriba, como la opción elegida de un menú
+    const currentPage = state.view.name === 'social' ? 'socialButton' : state.view.name === 'options' ? 'optionsButton' : 'arcadeButton';
+    ['arcadeButton', 'socialButton', 'optionsButton'].forEach(id => byId(id).setAttribute('aria-pressed', id === currentPage ? 'true' : 'false'));
     if (state.view.name === 'event' && state.events.some(event => event.id === state.view.id)) renderEvent();
     else if (state.view.name === 'social') renderSocial();
     else if (state.view.name === 'options') renderOptions();
@@ -1343,24 +1552,64 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   const writeStored = (key, value) => { try { localStorage.setItem(key, value); } catch (error) {} };
   // Every panel with a title can be folded (button at the right of its header); the app remembers which ones
   const foldedPanels = new Set(readStored('swgr.foldedPanels', '').split('|').filter(Boolean));
+  // Carrusel de la portada: las flechas solo salen si la fila no cabe entera
+  function refreshCarousels() {
+    document.querySelectorAll('.event-carousel').forEach(carousel => {
+      const grid = carousel.querySelector('.event-grid'), fits = grid.scrollWidth <= grid.clientWidth + 1;
+      carousel.querySelectorAll('.carousel-button').forEach(button => { button.hidden = fits; });
+    });
+  }
+  window.addEventListener('resize', refreshCarousels);
+  document.addEventListener('click', clickEvent => {
+    const button = clickEvent.target.closest('[data-carousel]');
+    if (!button) return;
+    const grid = button.parentElement.querySelector('.event-grid');
+    grid.scrollBy({ left: +button.dataset.carousel * grid.clientWidth * 0.8, behavior: 'smooth' });
+  });
+  // Holograma: la tarjeta bajo el ratón se inclina hacia él, con un reflejo que lo sigue
+  const tiltsCards = () => { const root = document.documentElement.classList; return root.contains('hologram') && !root.contains('no-animations'); };
+  const TILT_TARGETS = '.event-card, .time-tile.clickable, .top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button';
+  let tiltFrame = 0;
+  document.addEventListener('pointermove', pointerEvent => {
+    const card = pointerEvent.target.closest && pointerEvent.target.closest(TILT_TARGETS);
+    if (!card || !tiltsCards() || tiltFrame) return;
+    const { clientX, clientY } = pointerEvent;
+    tiltFrame = requestAnimationFrame(() => {
+      tiltFrame = 0;
+      const box = card.getBoundingClientRect(), x = (clientX - box.left) / box.width, y = (clientY - box.top) / box.height;
+      card.style.setProperty('--tilt-x', ((0.5 - y) * 12).toFixed(2) + 'deg');
+      card.style.setProperty('--tilt-y', ((x - 0.5) * 14).toFixed(2) + 'deg');
+      card.style.setProperty('--glare-x', (x * 100).toFixed(1) + '%');
+      card.style.setProperty('--glare-y', (y * 100).toFixed(1) + '%');
+      card.classList.add('tilting');
+    });
+  });
+  document.addEventListener('pointerout', pointerEvent => {
+    const card = pointerEvent.target.closest && pointerEvent.target.closest(TILT_TARGETS);
+    if (!card || (pointerEvent.relatedTarget && card.contains(pointerEvent.relatedTarget))) return;
+    card.classList.remove('tilting');
+    card.style.removeProperty('--tilt-x'); card.style.removeProperty('--tilt-y');
+  });
+  // Las columnas de Intentos y Trazada se pliegan hacia su lado; los demás paneles, hacia arriba
+  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') ? (folded ? '▸' : '◂') : panel.classList.contains('map-panel') ? (folded ? '◂' : '▸') : (folded ? '▸' : '▾');
   const panelKey = panel => (state.view ? state.view.name : '') + ':' + [...panel.parentElement.children].filter(item => item.classList.contains('panel')).indexOf(panel);
   new MutationObserver(() => {
     document.querySelectorAll('.panel > .panel-header:first-child:not([data-foldable])').forEach(header => {
-      if (!header.querySelector('h2')) return;
+      if (!header.querySelector('h2') || header.closest('.options-page')) return;   // en Opciones no hace falta plegar
       header.dataset.foldable = '1';
       const panel = header.parentElement;
       if (foldedPanels.has(panelKey(panel))) panel.classList.add('folded');
-      header.insertAdjacentHTML('beforeend', '<button type="button" class="fold-button" data-fold-panel="1" title="Fold or unfold">' + (panel.classList.contains('folded') ? '▸' : '▾') + '</button>');
+      header.insertAdjacentHTML('beforeend', '<button type="button" class="fold-button" data-fold-panel="1" title="Fold or unfold">' + foldArrow(panel, panel.classList.contains('folded')) + '</button>');
     });
   }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', clickEvent => {
     const button = clickEvent.target.closest('[data-fold-panel]');
     if (!button) return;
     const panel = button.closest('.panel'), folded = panel.classList.toggle('folded'), key = panelKey(panel);
-    button.textContent = folded ? '▸' : '▾';
+    button.textContent = foldArrow(panel, folded);
     if (folded) foldedPanels.add(key); else foldedPanels.delete(key);
     writeStored('swgr.foldedPanels', [...foldedPanels].join('|'));
-    if (!folded && state.analysis) drawAll();   // the canvases of an unfolded panel are drawn again at their size
+    if (state.analysis) requestAnimationFrame(drawAll);   // las columnas cambian de ancho: las gráficas y el mapa se dibujan a su tamaño nuevo
   });
   state.categoryFilter = readStored('swgr.categoryFilter', 'all');
   document.addEventListener('click', clickEvent => {
@@ -1520,10 +1769,9 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     html += '<div class="segmented" role="group" aria-label="View"><button type="button" data-home-view="cards" aria-pressed="' + (state.homeView !== 'times') + '">Cards</button>' +
       '<button type="button" data-home-view="times" aria-pressed="' + (state.homeView === 'times') + '">Times</button></div></div>';
     if (categories.length) {
-      const countIn = category => allIds.filter(id => categoryOf(id) === category && passesVehicle(id)).length;
       html += '<div class="filters categories" role="group" aria-label="Filter by category"><button type="button" data-category-filter="all" aria-pressed="' + (state.categoryFilter === 'all') + '">All</button>' +
         categories.map(category => '<button type="button" data-category-filter="' + category + '" aria-pressed="' + (+state.categoryFilter === category) + '">' +
-          escapeHtml(CATEGORY_NAMES[category] || ('Category ' + category)) + ' <span class="muted">' + countIn(category) + '</span></button>').join('') + '</div>';
+          escapeHtml(CATEGORY_NAMES[category] || ('Category ' + category)) + '</button>').join('') + '</div>';
     }
     // Golds: records that beat the #1 time
     const listed = events.filter(event => passes(event.id)).map(event => ({ recordTime: event.recordTime, targetTime: event.targetSource && event.targetSource.target }))
@@ -1535,7 +1783,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
       html += '<section class="planet-group"><header class="planet-group-header">' + (group.planet ? '<span class="planet">' + escapeHtml(group.planet) + '</span>' + aurebeshHtml(group.planet) : '<span class="planet-group-none">Other planets</span>') +
         '<span class="muted">' + count + (count === 1 ? ' event' : ' events') + '</span></header>';
       if (state.homeView === 'times') { html += timesGrid(group) + '</section>'; continue; }
-      if (group.events.length) html += '<div class="event-grid">' + group.events.map(eventCard).join('') + '</div>';
+      // Una fila por planeta, que se desplaza de lado (carrusel)
+      if (group.events.length) html += '<div class="event-carousel"><button type="button" class="carousel-button" data-carousel="-1" hidden>◂</button><div class="event-grid">' + group.events.map(eventCard).join('') + '</div><button type="button" class="carousel-button" data-carousel="1" hidden>▸</button></div>';
       if (group.recordsOnly.length) {
         group.recordsOnly.sort((first, second) => first.title.localeCompare(second.title));
         html += '<div class="planet-group-others"><span class="label">No telemetry yet</span><div class="compact-list">' +
@@ -1547,6 +1796,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     }
     html += '<div class="note">Arcade events only: the vehicle and build are fixed, so times are comparable. Races with a custom build are recorded but not shown here. Records without telemetry come from the game; run the event with the mod to see its laps and sectors.</div>';
     byId('main').innerHTML = html;
+    refreshCarousels();
   }
   const figure = (label, value, detail) => '<div class="figure"><span class="label">' + label + '</span><span class="value">' + value + '</span><span class="detail">' + (detail || '&nbsp;') + '</span></div>';
 
@@ -1559,14 +1809,14 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     const event = state.events.find(item => item.id === state.view.id);
     let html = '<div class="event-view"><div class="event-header"><div class="event-title">' + planetHtml(event.planet) + '<h1 title="' + escapeHtml(event.id) + '">' + escapeHtml(event.title) + '</h1><span class="event-subtitle">' +
       [event.plannedLaps === 1 ? 'Single-lap stage' : event.plannedLaps ? event.plannedLaps + ' laps' : '', event.gameRecord && event.gameRecord.attempts ? event.gameRecord.attempts + ' attempts in the game' : ''].filter(Boolean).join(' · ') + '</span></div>' +
-      '<div class="row" style="display:flex;gap:8px"><button class="button" id="renameButton">Rename</button></div></div>';
+      '</div>';
     html += summaryHtml(event);
 
     // Tres columnas: los intentos, las pestañas de análisis y el mapa con la repetición
-    html += '<div class="event-body" id="analysisLayout"><div class="event-left">' + attemptsHtml(event) + '<div class="friends-simple simple-only">' + friendsPanel(event) + '</div></div>';
+    html += '<div class="event-body" id="analysisLayout"><div class="event-left">' + leftPanelHtml(event) + '</div>';
     const friendsTab = friendsPanel(event, true);
     const tabs = EVENT_TABS.filter(([name]) => name === 'loss' ? !!event.sectorLosses : name === 'friends' ? !!friendsTab : true);
-    html += '<section class="panel event-center tryhard-only"><div class="focus-info" id="focusInfo">' + focusInfoHtml(event) + '</div><div class="tab-bar" role="tablist">' +
+    html += '<section class="panel event-center tryhard-only"><div class="panel-header center-header"><h2>Analysis</h2></div><div class="focus-info" id="focusInfo">' + focusInfoHtml(event) + '</div><div class="tab-bar" role="tablist">' +
       tabs.map(([name, label]) => '<button type="button" data-tab="' + name + '" aria-pressed="false">' + label + '</button>').join('') + '</div><div class="tab-panes">';
     html += '<div class="tab-pane" data-pane="laps"><div class="table-scroll"><table id="lapTable"></table></div>' +
       '<div class="note" title="The ideal lap joins your best sectors from the ticked attempts, with their racing line: compare yourself with it to see where time slips away.">Tap a lap to put it in A and «B» to compare it against A.</div></div>';
@@ -1582,7 +1832,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (friendsTab) html += '<div class="tab-pane" data-pane="friends">' + friendsTab + '</div>';
     html += '</div></section>';
     html += '<div class="analysis-map"><div class="panel map-panel"><div class="panel-header"><h2 style="color:var(--map-text)">Racing line</h2><div class="segmented"><button id="mapSpeedMode" aria-pressed="true">Speed</button><button id="mapGainMode" aria-pressed="false">Gain</button><button id="mapLinesMode" aria-pressed="false">Lines</button><button id="mapTrailMode" class="tryhard-only" aria-pressed="false">Trail</button></div></div>' +
-      '<div class="versus-bar" id="versusBar"><label class="versus-kind">Compare <select id="replayScope" aria-label="What to compare"><option value="lap">Lap</option></select></label>' +
+      '<div class="versus-bar" id="versusBar"><label class="versus-kind">Compare <select id="replayScope" aria-label="What to compare"><option value="lap">Lap</option></select></label>' + '<button type="button" class="fold-button versus-fold" data-versus-fold="1" aria-label="A B"></button>' +
       '<div class="versus-side"><i class="legend-line" style="background:var(--accent)"></i><span class="versus-tag">A</span><select id="compareA" class="tryhard-only" aria-label="A"></select><b id="selectedA" class="simple-only">—</b><div class="versus-sub"><span class="numeric" id="selectedTimeA"></span><span class="boost-tag" id="boostTagA" style="visibility:hidden"></span></div></div>' +
       '<div class="versus-side"><i class="legend-line" id="legendLineB" style="background:var(--reference)"></i><span class="versus-tag">B</span><select id="compareB" class="tryhard-only" aria-label="B"></select><select id="simpleRival" class="simple-only" aria-label="Against whom"></select><b id="selectedB" class="visually-hidden">—</b><div class="versus-sub"><span class="numeric" id="selectedTimeB"></span><span class="versus-gap" id="versusGap"></span><span class="boost-tag" id="boostTagB" style="visibility:hidden"></span></div></div>' +
       '</div>' +
@@ -1597,18 +1847,6 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     html += '</div></div>';
     byId('main').innerHTML = html;
 
-    byId('renameButton').onclick = async () => {
-      // An app window has no dialogs: the title is edited in place
-      const heading = document.querySelector('.event-header h1');
-      heading.contentEditable = 'true'; heading.focus();
-      document.getSelection().selectAllChildren(heading);
-      heading.onblur = async () => {
-        heading.contentEditable = 'false';
-        const name = heading.textContent.trim();
-        await saveValue('eventName', event.id, name === describeEventCode(event.id) || name === officialEventName(event.id) ? '' : name);
-      };
-      heading.onkeydown = keyEvent => { if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); heading.blur(); } };
-    };
     if (byId('gameRecordSave')) byId('gameRecordSave').onclick = async () => {
       const total = parseTime(byId('gameTotalInput').value), lap = parseTime(byId('gameLapInput').value);
       if (Number.isNaN(total) || Number.isNaN(lap)) { byId('gameRecordMessage').innerHTML = '<span class="loss">Use the format 1:21.500 or 19.800</span>'; return; }
@@ -1693,6 +1931,23 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     return event.sessions.filter(session => session.telemetryFile).pop() || null;
   }
   // Lista compacta de intentos: fecha, total y tiempos de vuelta; pulsar uno lo elige y la casilla suma otros al análisis
+  // Columna izquierda: en modo simple, Intentos y Amigos son pestañas del mismo panel
+  state.simpleLeftTab = 'attempts';
+  function leftPanelHtml(event) {
+    const friends = friendsPanel(event, true), showFriends = friends && state.simpleLeftTab === 'friends';
+    if (!friends) return attemptsHtml(event);
+    const tab = (name, label, pressed) => '<button type="button" data-left-tab-button="' + name + '" aria-pressed="' + pressed + '">' + label + '</button>';
+    const tabs = '<div class="tab-bar simple-only">' + tab('attempts', 'Attempts', !showFriends) + tab('friends', 'Friends', !!showFriends) + '</div>';
+    return attemptsHtml(event).replace('class="panel attempts-panel"', showFriends ? 'class="panel attempts-panel showing-friends"' : 'class="panel attempts-panel"')
+      .replace('<div class="attempt-list">', tabs + '<div class="attempt-list">').replace('<div class="note">', '<div class="simple-friends simple-only">' + friends + '</div><div class="note">');
+  }
+  document.addEventListener('click', clickEvent => {
+    const button = clickEvent.target.closest('[data-left-tab-button]');
+    if (!button) return;
+    state.simpleLeftTab = button.dataset.leftTabButton;
+    button.closest('.attempts-panel').classList.toggle('showing-friends', state.simpleLeftTab === 'friends');
+    button.parentElement.querySelectorAll('[data-left-tab-button]').forEach(item => item.setAttribute('aria-pressed', item === button));
+  });
   function attemptsHtml(event) {
     const selected = selectedSessions(event), focused = focusedSession(event);
     let html = '<section class="panel attempts-panel"><div class="panel-header"><h2>Attempts</h2><span class="muted" title="Click an attempt to see its data and tick the box to add others to the analysis. Telemetry is kept for the last ' + state.data.attemptsToKeep +
@@ -1727,10 +1982,10 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     return '<b class="numeric">' + escapeHtml((session.date || session.id).slice(0, 16)) + '</b>' +
       '<span class="numeric' + (isBestSession ? ' best' : '') + '">' + (session.total ? formatTime(session.total) + (session.totalCalculated ? '*' : '') : '—') + '</span>' +
       (session.total && session.target ? '<span class="muted">target</span><span class="numeric ' + (session.total <= session.target ? 'gain' : 'loss') + '">' + formatSigned(session.total - session.target) + '</span>' : '') +
-      (isBestSession ? '<span class="tag highlight">record</span>' : '') + (hasBestLap ? '<span class="tag highlight">best lap</span>' : '') +
+      '<div class="focus-tags">' + (isBestSession ? '<span class="tag highlight">record</span>' : '') + (hasBestLap ? '<span class="tag highlight">best lap</span>' : '') +
       (session.success == null ? ''
         : (session.total > 0 && session.target > 0 && session.total <= session.target) ? '<span class="tag success">#1 beaten</span>'
-        : session.success ? '<span class="tag">passed</span>' : '<span class="tag failure">not passed</span>');
+        : session.success ? '<span class="tag">passed</span>' : '<span class="tag failure">not passed</span>') + '</div>';
   }
   // Pulsar un intento lo elige: la columna del centro y el mapa pasan a mostrar sus datos (en modo simple se suma a los cargados)
   function focusAttempt(event, sessionId) {
@@ -2213,6 +2468,24 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     return trace.length > 1 ? { trace, time: timeOffset, lapCount: laps.length } : null;
   }
   const isOwnLap = lap => lap && !lap.isIdeal && !lap.isFriend;
+  // Puntos de Precisión: el juego solo dice los que pasas, así que los del evento son la unión de los de tus
+  // intentos cargados (el mismo punto cae siempre a unos metros). Cuántos pasó y cuáles se saltó una vuelta.
+  const BONUS_POINT_RADIUS = 4000;   // 40 m
+  const sameBonusPoint = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= BONUS_POINT_RADIUS;
+  function bonusCourse(analysis) {
+    if (!analysis.bonusCoursePoints) {
+      const points = [];
+      analysis.laps.forEach(lap => (lap.bonusPoints || []).forEach(point => { if (!points.some(known => sameBonusPoint(known, point))) points.push(point); }));
+      analysis.bonusCoursePoints = points.sort((first, second) => first.distance - second.distance);
+    }
+    return analysis.bonusCoursePoints;
+  }
+  // null si la vuelta no tiene marcas de puntos (amigos, ideal, carreras antiguas)
+  function bonusStatus(analysis, lap) {
+    if (!lap || !lap.bonusPoints || !lap.bonusPoints.length) return null;
+    const course = bonusCourse(analysis), missed = course.filter(point => !lap.bonusPoints.some(own => sameBonusPoint(own, point)));
+    return { course, missed, passed: course.length - missed.length, lost: missed.reduce((sum, point) => sum + point.value, 0) };
+  }
   // The rival of a whole race: another attempt of yours with the same laps or, if not, the reference repeated on every lap
   function raceRival(analysis, lapA, lapB) {
     if (!lapA || !lapB || !isWholeRace(analysis, lapB) || (!lapB.friendRace && !lapB.idealRace && lapB.sessionId === lapA.sessionId)) return null;
@@ -2395,8 +2668,23 @@ function deltaSeries(lapA, lapB, length, pointCount) {
       const margin = Math.max(maxX - minX, maxY - minY) * 0.12 + 2000;
       zoomBox = { minX: minX - margin, maxX: maxX + margin, minY: minY - margin, maxY: maxY + margin };
     }
+    traceA = withoutBonusJumps(traceA); traceB = withoutBonusJumps(traceB);
     replay.segment = { key, analysis, traceA, traceB, kind, startDistance, endDistance, zoomBox, nameB: referenceName(analysis.lapB), lapsA, lapsB, sectorNumber };
     return replay.segment;
+  }
+  // La traza descuenta los puntos de Precisión: su tiempo retrocede 1,5 s en cada uno y los coches saltaban.
+  // Para reproducirla se quitan esos retrocesos (queda el tiempo real en pista); las gráficas no cambian.
+  function withoutBonusJumps(item) {
+    if (!item) return item;
+    let offset = 0, previous = null, lastStep = 0, changed = false;
+    const trace = item.trace.map(point => {
+      if (previous !== null && point.time + offset < previous - 0.2) { offset += previous - (point.time + offset) + lastStep; changed = true; }
+      const time = point.time + offset;
+      if (previous !== null && time > previous) lastStep = time - previous;
+      previous = time;
+      return Object.assign({}, point, { time });
+    });
+    return changed ? Object.assign({}, item, { trace, time: trace[trace.length - 1].time }) : item;
   }
   function replayDuration() {
     const segment = replaySegment(), replay = state.replay;
@@ -2655,6 +2943,12 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     const scaleToFit = box => Math.min((width - 2 * padding) / ((box.maxX - box.minX) || 1), (height - 2 * padding) / ((box.maxY - box.minY) || 1));
     let scale = scaleToFit(view), centerX = (view.minX + view.maxX) / 2, centerY = (view.minY + view.maxY) / 2;
     if (cars && replay.followCar) { scale = Math.max(scale, scaleToFit(bounds) * 4); centerX = cars.carA.x; centerY = cars.carA.y; }
+    // Zoom y arrastre del mapa (se vuelve a la vista entera al cambiar de evento)
+    const eventId = analysis.event && analysis.event.id;
+    if (state.mapView.eventId !== eventId) state.mapView = { eventId, zoom: 1, panX: 0, panY: 0 };
+    const mapView = state.mapView;
+    scale *= mapView.zoom; centerX += mapView.panX; centerY += mapView.panY;
+    mapView.scale = scale; mapView.width = width; mapView.height = height;
     const toScreen = (x, y) => [width / 2 + (x - centerX) * scale, height / 2 + (y - centerY) * scale];
     context.lineCap = 'round'; context.lineJoin = 'round';
     context.strokeStyle = cssVariable('--map-track'); context.lineWidth = 14;
@@ -2717,6 +3011,16 @@ function deltaSeries(lapA, lapB, length, pointCount) {
         : trailMode ? TRAIL_LEGEND
         : gainRate ? '<span style="color:var(--gain)">gaining time</span><span class="scale-bar" style="background:linear-gradient(90deg,' + cssVariable('--gain') + ',' + cssVariable('--map-text') + ',' + cssVariable('--loss') + ')"></span><span style="color:var(--loss)">losing time</span>'
         : '<span>' + lowestSpeed + '</span><span class="scale-bar" style="background:linear-gradient(90deg,' + speedPalette.join(',') + ')"></span><span>' + highestSpeed + ' km/h</span>';
+    }
+    // Tryhard: los puntos de Precisión de la vuelta A, en rojo los que se saltó
+    const bonus = !isSimpleMode() && bonusStatus(analysis, lapA);
+    if (bonus) {
+      bonus.course.forEach(point => {
+        const [x, y] = toScreen(point.x, point.y), isMissed = bonus.missed.includes(point);
+        context.fillStyle = isMissed ? cssVariable('--loss') : cssVariable('--map-text');
+        context.beginPath(); context.arc(x, y, isMissed ? 6 : 3, 0, Math.PI * 2); context.fill();
+      });
+      scaleHtml += '<span>' + bonus.passed + ' points passed out of ' + bonus.course.length + (bonus.missed.length ? ' · missed: ' + bonus.missed.length + ' (' + bonus.lost.toFixed(1) + ' s)' : '') + '</span>';
     }
     if (state.mapMode === 'gain' && !lapB) scaleHtml = '<span>Pick a reference lap to see where you gain or lose.</span>';
     byId('mapScale').innerHTML = scaleHtml;
@@ -2893,6 +3197,13 @@ function deltaSeries(lapA, lapB, length, pointCount) {
         context.fillRect(xOf(from.distance), rowY, Math.max(1, xOf(to.distance) - xOf(from.distance)), 4);
       }
     });
+    // Tryhard: una raya en cada punto de Precisión que A se saltó
+    const bonusOfA = !isSimpleMode() && comparisonKind() !== 'race' && bonusStatus(analysis, analysis.lapA);
+    if (bonusOfA) {
+      context.save(); context.fillStyle = cssVariable('--loss'); context.globalAlpha = 0.7;
+      bonusOfA.missed.filter(inside).forEach(point => context.fillRect(xOf(point.distance) - 1, CHART_MARGIN.top, 2, height - CHART_MARGIN.top - CHART_MARGIN.bottom));
+      context.restore();
+    }
     context.font = '11px ' + cssVariable('--font-display'); context.fillStyle = cssVariable('--text-muted'); context.textAlign = 'left'; context.textBaseline = 'top';
     context.fillText('SPEED (km/h)', CHART_MARGIN.left + 4, CHART_MARGIN.top + 2);
     context.textAlign = 'right'; context.fillText(analysis.track && analysis.track.isPointToPoint ? 'metres from the start →' : 'metres from the line →', width - CHART_MARGIN.right - 2, CHART_MARGIN.top + 2);
@@ -2927,6 +3238,52 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   const isLapChart = element => element.id === 'deltaChart' || element.id === 'speedChart';
   document.addEventListener('pointermove', pointerEvent => { if (isLapChart(pointerEvent.target)) hoverChart({ currentTarget: pointerEvent.target, clientX: pointerEvent.clientX }); });
   document.addEventListener('pointerout', pointerEvent => { if (isLapChart(pointerEvent.target) && state.hoverDistance != null) { state.hoverDistance = null; drawAll(); } });
+  // Mapa: la rueda acerca o aleja hacia el ratón, arrastrar lo mueve y el doble clic vuelve a la vista entera
+  state.mapView = { eventId: null, zoom: 1, panX: 0, panY: 0 };
+  const MAP_MAX_ZOOM = 40;
+  document.addEventListener('wheel', wheelEvent => {
+    const view = state.mapView;
+    if (wheelEvent.target.id !== 'map' || !state.analysis || !view.scale) return;
+    wheelEvent.preventDefault();
+    const zoom = Math.max(1, Math.min(MAP_MAX_ZOOM, view.zoom * (wheelEvent.deltaY < 0 ? 1.25 : 0.8)));
+    if (zoom === 1) { view.panX = 0; view.panY = 0; }
+    else {
+      const box = wheelEvent.target.getBoundingClientRect(), offsetX = wheelEvent.clientX - box.left - view.width / 2, offsetY = wheelEvent.clientY - box.top - view.height / 2;
+      const newScale = view.scale * zoom / view.zoom;
+      view.panX += offsetX / view.scale - offsetX / newScale; view.panY += offsetY / view.scale - offsetY / newScale;
+    }
+    view.zoom = zoom;
+    drawMap();
+  }, { passive: false });
+  document.addEventListener('pointerdown', pointerEvent => {
+    if (pointerEvent.target.id !== 'map' || pointerEvent.button !== 0 || !state.mapView.scale) return;
+    state.mapDrag = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+    pointerEvent.target.setPointerCapture(pointerEvent.pointerId);
+    pointerEvent.target.classList.add('dragging');
+  });
+  document.addEventListener('pointermove', pointerEvent => {
+    if (!state.mapDrag) return;
+    const view = state.mapView;
+    view.panX -= (pointerEvent.clientX - state.mapDrag.x) / view.scale; view.panY -= (pointerEvent.clientY - state.mapDrag.y) / view.scale;
+    state.mapDrag = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+    drawMap();
+  });
+  const endMapDrag = () => { if (state.mapDrag) { state.mapDrag = null; if (byId('map')) byId('map').classList.remove('dragging'); } };
+  document.addEventListener('pointerup', endMapDrag);
+  document.addEventListener('pointercancel', endMapDrag);
+  document.addEventListener('dblclick', clickEvent => {
+    if (clickEvent.target.id !== 'map') return;
+    Object.assign(state.mapView, { zoom: 1, panX: 0, panY: 0 });
+    drawMap();
+  });
+  // El recuadro de comparar se pliega hacia arriba y deja más sitio al mapa; la app lo recuerda
+  document.documentElement.classList.toggle('versus-folded', readStored('swgr.versusFolded', '') === '1');
+  document.addEventListener('click', clickEvent => {
+    if (!clickEvent.target.closest('[data-versus-fold]')) return;
+    const folded = document.documentElement.classList.toggle('versus-folded');
+    writeStored('swgr.versusFolded', folded ? '1' : '');
+    if (state.analysis) requestAnimationFrame(drawAll);
+  });
   const MAP_MODE_BUTTONS = { mapSpeedMode: 'speed', mapGainMode: 'gain', mapLinesMode: 'lines', mapTrailMode: 'trail' };
   document.addEventListener('click', clickEvent => {
     const mode = MAP_MODE_BUTTONS[clickEvent.target.id];
@@ -2978,7 +3335,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   // Options page: theme, hologram, animations, language and the ghost; saved in preferences.txt
   const THEME_NAMES = { sith: 'Sith', jedi: 'Jedi', imperial: 'Imperial', galactic: 'Galactic Racer' };
   const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
-    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game' };   // ghost_*: el mod las lee al empezar la siguiente carrera
+    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game', selected_effect: 'hologram', selected_speed: 'normal', selected_lines: 'normal', selected_bands: 'one', page_speed: 'normal', page_bands: 'one', page_same_as_buttons: 'off' };   // ghost_*: el mod las lee al empezar la siguiente carrera
   // Simple mode shows the essentials; Tryhard (the default) the whole analysis
   const isSimpleMode = () => preference('mode') === 'simple';
   const preference = key => ((state.data && state.data.preferences) || {})[key] || PREFERENCE_DEFAULTS[key];
@@ -2992,10 +3349,25 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     root.classList.toggle('hologram-soft', hologram === 'soft');
     root.classList.toggle('hologram-strong', hologram === 'strong');
     setAnimations(preference('animations') !== 'off');
+    // Efecto de la opción elegida: con el holograma de la app, siempre o nunca; su velocidad y sus líneas
+    const selectedEffect = preference('selected_effect');
+    root.classList.toggle('selected-holo', selectedEffect === 'always' || (selectedEffect === 'hologram' && root.classList.contains('hologram')));
+    root.style.setProperty('--selected-speed', { slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s');
+    root.style.setProperty('--selected-bands', { one: '1', two: '2', three: '3' }[preference('selected_bands')] || '1');
+    // Banda de luz del fondo: su propia velocidad y sus líneas, o las de los botones sin perder las suyas
+    const linked = preference('page_same_as_buttons') === 'on';
+    const pageNormal = root.classList.contains('hologram-strong') ? '5s' : '7s';
+    const pageSpeed = linked ? ({ slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s') : ({ slow: '11s', normal: pageNormal, fast: '3.5s' }[preference('page_speed')] || pageNormal);
+    const pageBands = preference(linked ? 'selected_bands' : 'page_bands');
+    root.style.setProperty('--page-speed', pageSpeed);
+    root.classList.toggle('page-bands-2', pageBands === 'two'); root.classList.toggle('page-bands-3', pageBands === 'three');
+    root.style.setProperty('--selected-gap', { few: '6px', normal: '3px', many: '2px' }[preference('selected_lines')] || '3px');
     root.classList.toggle('mode-simple', isSimpleMode());
     document.querySelectorAll('#modeButton [data-mode]').forEach(label => label.classList.toggle('chosen', label.dataset.mode === preference('mode')));
     document.querySelectorAll('#main [data-preference]').forEach(group => group.querySelectorAll('button').forEach(button =>
       button.setAttribute('aria-pressed', String(button.dataset.value === shownPreference(group.dataset.preference)))));
+    document.querySelectorAll('#main [data-preference="page_speed"], #main [data-preference="page_bands"]').forEach(group => group.closest('.group').classList.toggle('linked', linked));
+    if (byId('linkBands')) byId('linkBands').checked = linked;
   }
   // El valor que marca cada grupo de botones: la llama «No» es ghost_flame = off (la guarda el mod aparte del modo)
   const shownPreference = key => key === 'language' ? currentLanguage() : key === 'ghost_flame_mode' && preference('ghost_flame') === 'off' ? 'off' : preference(key);
@@ -3003,6 +3375,10 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (state.data) { state.data.preferences = state.data.preferences || {}; state.data.preferences[key] = value; }
     return postJson('/api/save', { kind: 'preference', key, value }).catch(() => {});
   }
+  document.addEventListener('change', changeEvent => {
+    if (changeEvent.target.id !== 'linkBands') return;
+    savePreference('page_same_as_buttons', changeEvent.target.checked ? 'on' : 'off'); applyPreferences();
+  });
   // The mode button of the top bar switches between Simple and Tryhard
   byId('modeButton').addEventListener('click', () => {
     savePreference('mode', isSimpleMode() ? 'tryhard' : 'simple'); applyPreferences();
@@ -3077,7 +3453,17 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   // ---------- About and what's new ----------
   // The app and the mod carry the same number since 0.9.10 (both will become 1.0 together)
   const CHANGELOG = [
-    { version: '0.9.31', items: [
+    { version: '0.9.41', items: [
+      'Stages with the gate before the GO, or that look like a circuit but are a single pass (Carreras frescas, Arena de la muerte): time and map are now right',
+      'Precision with a run-up: points are no longer discounted twice',
+      'Precision: the app marks the points you missed on the map and the speed chart (tryhard), and the replay no longer jumps',
+      'Map: zoom with the wheel, drag to move it and double click to see all of it again',
+      'Event page columns fold to their side, and the Compare box can be folded',
+      'Home page with one row per planet that scrolls sideways',
+      'Renewed hologram: cards, panels and buttons floating without a box, with options for the light on buttons and background',
+      'Options with icons, and a quick window to import or export times',
+      'Simple mode: Attempts and Friends in one panel with tabs',
+      'Event names can no longer be changed: they are always the ones from the game',
       'Compare: the A against B bar no longer moves when switching between normal, afterburner and ramjet',
       'In-track ghost: a trail from its nozzles (orange with the afterburner, blue with the ramjet) and the engine flame of the game, turned on and adjusted in Options',
       'Stages with a run-up (the lap of the game starts at a gate after the start): the time counts from the start, S1 goes from the start to the gate and the other sectors to the finish, so they add up to the total of the game. Your earlier best times on those stages start from zero',
@@ -3218,7 +3604,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   }
   function changelogHtml() {
     const [current, ...older] = CHANGELOG;
-    return (current ? changelogEntry(current, true) : '') +
+    return (current ? changelogEntry(current, false) : '') +
       (older.length ? '<details class="older-versions"><summary>Versiones anteriores</summary>' + older.map(entry => changelogEntry(entry, false)).join('') + '</details>' : '');
   }
   function aboutSection() {
@@ -3241,7 +3627,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
       '<dt>WebView2 and go-webview2</dt><dd>The app window uses the Edge engine that comes with Windows.</dd>' +
       '</dl><p class="note">Unofficial fan-made tool, not affiliated with Lucasfilm, Disney or the game\'s developers. Star Wars, STAR WARS: Galactic Racer and the names of planets, vehicles and events belong to their respective owners.</p></div></section>';
     html += '<section class="panel"><div class="panel-header"><h2>Important</h2></div><div class="about-warning">' +
-      'The mod is for <b>offline</b> training only. Before playing online or on leaderboards, turn UE4SS off by removing <b>dwmapi.dll</b> from the game\'s Win64 folder (put it back to train). ' +
+      'The mod only works in <b>Arcade</b> events: in the story and in multiplayer it records and shows nothing. UE4SS is still loaded with the game in every mode, so before playing multiplayer we recommend removing or renaming <b>dwmapi.dll</b> in the Win64 folder of the game (restore it to use the mod). ' +
       'The mod only reads game data: it changes nothing in your race. The app only works with your files, on your PC, offline.</div>' +
       '<p class="note">Mod folder: <span class="numeric">' + escapeHtml(data.modFolder || '—') + '</span></p></section></section>';
     return html;
@@ -3746,8 +4132,20 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (failed.length) showToast('Could not add ' + failed.join(' · '));
     await refreshData();
   }
-  // El botón «Importar tiempos» de la barra de arriba abre el selector de archivos de piloto
-  byId('importButton').addEventListener('click', () => byId('pilotFileInput').click());
+  // El botón de la barra de arriba abre una ventana en medio de la pantalla: importar archivos de piloto o exportar el tuyo
+  const setTransferMenu = open => { byId('transferMenu').hidden = !open; byId('importButton').setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  byId('importButton').addEventListener('click', () => setTransferMenu(true));
+  document.addEventListener('click', async clickEvent => {
+    const option = clickEvent.target.closest('[data-transfer]');
+    if (!option) { if (clickEvent.target === byId('transferMenu')) setTransferMenu(false); return; }   // pulsar fuera de la ventana la cierra
+    setTransferMenu(false);
+    if (option.dataset.transfer === 'import') { byId('pilotFileInput').click(); return; }
+    // Exportar: en su apartado de Opciones, donde se ve el progreso y el resultado
+    state.optionsSection = 'optionsPilotFile';
+    await navigate({ name: 'options' });
+    if (byId('pilotExport')) byId('pilotExport').click();
+  });
+  document.addEventListener('keydown', keyEvent => { if (keyEvent.key === 'Escape') setTransferMenu(false); });
   byId('pilotFileInput').addEventListener('change', changeEvent => { importPilotFiles(changeEvent.target.files); changeEvent.target.value = ''; });
   // .swgr files can be dragged onto any part of the window
   const draggingFiles = dragEvent => [...(dragEvent.dataTransfer && dragEvent.dataTransfer.types || [])].includes('Files');
@@ -3828,9 +4226,69 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     '<div class="group"><span>Mode</span><div class="options" data-preference="mode"><button type="button" data-value="simple">Simple</button><button type="button" data-value="tryhard">Tryhard</button></div></div>' +
     '<div class="group"><span>Hologram effect</span><div class="options" data-preference="hologram"><button type="button" data-value="off">Off</button><button type="button" data-value="soft">Soft</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Strong</button></div></div>' +
     '<div class="group"><span>Animations</span><div class="options" data-preference="animations"><button type="button" data-value="on">On</button><button type="button" data-value="off">Off</button></div></div>' +
+    '<div class="group"><span>Effect on the chosen option</span><div class="options" data-preference="selected_effect"><button type="button" data-value="off">Off</button><button type="button" data-value="hologram">Only if Hologram effect is on</button><button type="button" data-value="always">Always, even if it is Off</button></div></div>' +
+    '<div class="group"><span>Buttons: light speed</span><div class="options" data-preference="selected_speed"><button type="button" data-value="slow">Slow</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Fast</button></div></div>' +
+    '<div class="group"><span>Buttons: descending lines</span><div class="options" data-preference="selected_bands"><button type="button" data-value="one">One</button><button type="button" data-value="two">Two</button><button type="button" data-value="three">Three</button></div></div>' +
+    '<div class="group"><span>Buttons: scan lines</span><div class="options" data-preference="selected_lines"><button type="button" data-value="few">Few</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="many">Many</button></div></div>' +
+    '<div class="group"><span>Background same as buttons</span><label class="tick-option"><input type="checkbox" id="linkBands"> Use the speed and the lines of the buttons on the background</label></div>' +
+    '<div class="group"><span>Background: light speed</span><div class="options" data-preference="page_speed"><button type="button" data-value="slow">Slow</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Fast</button></div></div>' +
+    '<div class="group"><span>Background: descending lines</span><div class="options" data-preference="page_bands"><button type="button" data-value="one">One</button><button type="button" data-value="two">Two</button><button type="button" data-value="three">Three</button></div></div>' +
     '<div class="group"><span>Language</span><div class="options" data-preference="language"><button type="button" data-value="es">Español</button><button type="button" data-value="en">English</button><button type="button" data-value="aurebesh" class="aurebesh-option">Aurebesh</button></div>' +
     '<span class="aurebesh-missing" id="aurebeshMissing">Aurebesh needs the SF Distant Galaxy Symbols font (ShyFonts, free for personal use). It is not included in the app because of its licence: install it in Windows or put it in the «fonts» folder and reopen the app.</span></div>';
   // Apartados de Opciones, en el orden del menú lateral
+  // Iconos de Opciones (dibujados para esta app): uno por apartado y uno por cada ajuste
+  const EYE = '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>';
+  const HALF = '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 7h6M12 11h8M12 15h7"/>';
+  const DROP = '<path d="M12 3s7 7 7 12a7 7 0 0 1-14 0c0-5 7-12 7-12z"/>';
+  const OPTION_ICONS = {
+    optionsProfile: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/>',
+    optionsPilotFile: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
+    optionsFriends: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.500-6 7-6s6 2 7 6"/><path d="M16 5a3.500 3.500 0 0 1 0 7M18 14c2 1 3.500 3 4 6"/>',
+    optionsGhost: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-3-2-2 2-2-2-2 2-2-2z"/><circle cx="9.500" cy="10" r="1"/><circle cx="14.500" cy="10" r="1"/>',
+    optionsAppearance: '<path d="M12 3a9 9 0 1 0 0 18c2 0 2-2 1-3-1-2 0-3 2-3h3c2 0 3-1 3-3 0-5-4-9-9-9z"/><circle cx="7.500" cy="11" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="16" cy="9" r="1"/>',
+    optionsRacePanel: '<rect x="3" y="5" width="18" height="14" rx="1.500"/><path d="M3 10h18M9 10v9M15 10v9"/>',
+    optionsAbout: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500v.5"/>',
+    ghost_enabled: EYE, enabled: EYE,
+    ghost_color: DROP, palette: DROP,
+    ghost_transparency: HALF, ghost_trail_transparency: HALF, racePanelOpacity: HALF,
+    ghost_flame_mode: '<path d="M12 3c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-7 1 2 2 3 3 3 0-3-1-5 0-8z"/>',
+    ghost_trail: '<path d="M3 8c3-3 6 3 9 0s6-3 9 0M3 16c3-3 6 3 9 0s6-3 9 0"/>',
+    theme: '<path d="M12 3a9 9 0 1 0 0 18c2 0 2-2 1-3-1-2 0-3 2-3h3c2 0 3-1 3-3 0-5-4-9-9-9z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.500" r="1"/>',
+    mode: '<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/>',
+    hologram: '<path d="M12 2l9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    animations: '<circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z"/>',
+    language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+    place: '<path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/>',
+    racePanelScale: '<path d="M4 20l16-16M14 4h6v6M10 20H4v-6"/>',
+    style: '<rect x="3" y="4" width="18" height="16" rx="1.500"/><path d="M3 10h18M10 10v10"/>',
+    compare_with: '<path d="M6 20V10M12 20V4M18 20v-7"/>',
+    rows: '<path d="M4 6h16M4 12h16M4 18h16"/>', selected_lines: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    linkBands: '<path d="M9 15l6-6M10 6l1-1a4.500 4.500 0 0 1 7 7l-1 1M14 18l-1 1a4.500 4.500 0 0 1-7-7l1-1"/>',
+    page_speed: '<path d="M3.500 17a8.500 8.500 0 1 1 17 0"/><path d="M12 17l4.500-6"/>', page_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
+    selected_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
+    selected_effect: '<path d="M12 3l2.500 6.500L21 12l-6.500 2.500L12 21l-2.500-6.500L3 12l6.500-2.500z"/>',
+    selected_speed: '<path d="M3.500 17a8.500 8.500 0 1 1 17 0"/><path d="M12 17l4.500-6"/>',
+  };
+  const optionIcon = key => OPTION_ICONS[key] ? '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true">' + OPTION_ICONS[key] + '</svg>' : '';
+  // El ajuste de cada grupo sale de sus propios atributos, no del texto, que cambia con el idioma
+  function optionKeyOf(group) {
+    const find = selector => group.querySelector(selector);
+    const preference = find('[data-preference]'), panelKey = find('[data-race-panel-key]'), range = find('input[type="range"]');
+    if (preference) return preference.dataset.preference;
+    if (panelKey) return panelKey.dataset.racePanelKey;
+    if (range) return range.id;
+    if (find('#linkBands')) return 'linkBands';
+    if (find('.race-panel-rows')) return 'rows';
+    if (find('[data-race-panel-place]')) return 'place';
+    if (find('[data-race-panel-palette]')) return 'palette';
+    return '';
+  }
+  function addOptionIcons() {
+    document.querySelectorAll('.options-page .group').forEach(group => {
+      const label = group.querySelector(':scope > span:first-child');
+      if (label && !label.querySelector('.option-icon')) label.insertAdjacentHTML('afterbegin', optionIcon(optionKeyOf(group)));
+    });
+  }
   const OPTIONS_SECTIONS = [['optionsProfile', 'Profile'], ['optionsPilotFile', 'Your pilot file'], ['optionsFriends', 'Your friends\' files'],
     ['optionsGhost', 'In-track ghost'], ['optionsAppearance', 'App appearance'], ['optionsRacePanel', 'In-race panel'], ['optionsAbout', 'About']];
   state.optionsSection = readStored('swgr.optionsSection', 'optionsProfile');
@@ -3850,14 +4308,15 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     html += optionsPanel('optionsPilotFile', 'Your pilot file', 'Export your times to hand them to your friends.', pilotFileBody());
     html += optionsPanel('optionsFriends', 'Your friends\' files', 'The .swgr files you added to compare yourself with them.', friendsBody(), 'drop-zone');
     html += optionsPanel('optionsGhost', 'In-track ghost', 'How your ghost looks in the race; it applies from the next one.', ghostOptionsBody());
-    html += optionsPanel('optionsAppearance', 'App appearance', 'Theme, mode, effects and language of this window.', appearanceBody());
+    html += optionsPanel('optionsAppearance', 'App appearance', 'Theme, mode, effects and language of this window.', appearanceBody(), 'appearance-panel');
     html += optionsPanel('optionsRacePanel', 'In-race panel', 'Where the timing panel shows in the race, its size, its colours and its rows.', racePanelBody());
     html += aboutSection();
     // Menú lateral con los apartados; a la derecha solo se ve el elegido (se recuerda el último)
-    const nav = OPTIONS_SECTIONS.map(([id, title]) => '<button type="button" data-options-section="' + id + '">' + title + '</button>').join('');
+    const nav = OPTIONS_SECTIONS.map(([id, title]) => '<button type="button" data-options-section="' + id + '">' + optionIcon(id) + '<span>' + title + '</span></button>').join('');
     const header = html.slice(0, html.indexOf('</div>') + 6), sections = html.slice(header.length);
     byId('main').innerHTML = '<div class="options-page">' + header + '<nav class="options-nav">' + nav + '</nav><div class="options-content">' + sections + '</div></div>';
     document.querySelectorAll('[data-options-section]').forEach(button => button.addEventListener('click', () => showOptionsSection(button.dataset.optionsSection)));
+    addOptionIcons();
     showOptionsSection(state.optionsSection);
     wireProfile();
     byId('pilotExport').addEventListener('click', exportPilotFile);
@@ -3952,7 +4411,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
           '</tbody></table></div>';
       } else html += '<p class="muted">You have no events in common with a time yet.</p>';
       html += '</section>';
-    } else html += '<section class="panel"><div class="empty-state"><b>No friends added yet</b><span>Click «Import times» at the top (or drag a .swgr file here) and the standings and head to head will show up. Your profile and your pilot file are in Options.</span></div></section>';
+    } else html += '<section class="panel"><div class="empty-state"><b>No friends added yet</b><span>Click «Import / Export» at the top (or drag a .swgr file here) and the standings and head to head will show up. Your profile and your pilot file are in Options.</span></div></section>';
     byId('main').innerHTML = html;
     if (byId('versusPicker')) byId('versusPicker').addEventListener('change', changeEvent => { state.versusPilot = changeEvent.target.value; writeStored('swgr.versusPilot', state.versusPilot); renderSocial(); });
     document.querySelectorAll('[data-remove-friend]').forEach(button => button.addEventListener('click', async () => {

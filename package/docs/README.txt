@@ -1,4 +1,4 @@
-SWGR Telemetry v0.9.31 - para entrenar OFFLINE
+SWGR Telemetry v0.9.41 - para los eventos de Arcade
 (El mod y la app llevan ahora el mismo número de versión; los dos serán la 1.0 a la vez.)
 
 Instalación
@@ -115,6 +115,7 @@ Notas
     sola a tracks\<circuito>\ (el mod no abre ninguna ventana, así el juego no sale de la
     pantalla completa); desde entonces el mod ya graba en esa carpeta.
   - El tramo desde la parrilla hasta la primera vez que cruzas la meta no cuenta como vuelta.
-  - El panel es una ayuda en carrera: úsalo solo offline.
-  - Antes de jugar online o de subir tiempos al ranking: desactiva UE4SS (quita dwmapi.dll).
+  - El panel y el fantasma solo aparecen en los eventos de Arcade.
+  - UE4SS se carga con el juego en todos los modos: antes de jugar al multijugador se recomienda
+    quitar o renombrar dwmapi.dll en la carpeta Win64 (vuelve a dejarlo como estaba para usar el mod).
   - Desinstalar: borra la carpeta SWGRTelemetry, o solo enabled.txt para desactivarlo.

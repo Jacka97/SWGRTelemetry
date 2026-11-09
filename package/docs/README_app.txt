@@ -1,4 +1,4 @@
-Telemetría Galactic Racer 0.9.31 - app local para el mod SWGR Telemetry
+Telemetría Galactic Racer 0.9.41 - app local para el mod SWGR Telemetry
 
 Instalación
   Copia GalacticRacerTelemetry.exe dentro de la carpeta del mod:
@@ -104,3 +104,12 @@ Espacio
   Las sesiones se comprimen a los 10 minutos para ocupar unas 4 veces menos.
 
 Para cerrarla, cierra su ventana.
+
+Apariencia y atajos
+  - Importar / Exportar (arriba a la izquierda): ventana rápida para añadir los archivos .swgr
+    de tus amigos o crear el tuyo.
+  - Mapa: rueda para acercar o alejar, arrastrar para moverlo y doble clic para verlo entero.
+  - Página del evento: Intentos, el panel central y Trazada se pliegan con su botón, y el
+    recuadro de Comparar también.
+  - Precisión (modo tryhard): el mapa y la gráfica de velocidad marcan los puntos que te saltaste.
+  - Opciones > Apariencia de la app: efecto holograma, y la luz de los botones y del fondo.

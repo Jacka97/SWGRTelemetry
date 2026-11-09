@@ -22,24 +22,64 @@
   const writeStored = (key, value) => { try { localStorage.setItem(key, value); } catch (error) {} };
   // Every panel with a title can be folded (button at the right of its header); the app remembers which ones
   const foldedPanels = new Set(readStored('swgr.foldedPanels', '').split('|').filter(Boolean));
+  // Carrusel de la portada: las flechas solo salen si la fila no cabe entera
+  function refreshCarousels() {
+    document.querySelectorAll('.event-carousel').forEach(carousel => {
+      const grid = carousel.querySelector('.event-grid'), fits = grid.scrollWidth <= grid.clientWidth + 1;
+      carousel.querySelectorAll('.carousel-button').forEach(button => { button.hidden = fits; });
+    });
+  }
+  window.addEventListener('resize', refreshCarousels);
+  document.addEventListener('click', clickEvent => {
+    const button = clickEvent.target.closest('[data-carousel]');
+    if (!button) return;
+    const grid = button.parentElement.querySelector('.event-grid');
+    grid.scrollBy({ left: +button.dataset.carousel * grid.clientWidth * 0.8, behavior: 'smooth' });
+  });
+  // Holograma: la tarjeta bajo el ratón se inclina hacia él, con un reflejo que lo sigue
+  const tiltsCards = () => { const root = document.documentElement.classList; return root.contains('hologram') && !root.contains('no-animations'); };
+  const TILT_TARGETS = '.event-card, .time-tile.clickable, .top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button';
+  let tiltFrame = 0;
+  document.addEventListener('pointermove', pointerEvent => {
+    const card = pointerEvent.target.closest && pointerEvent.target.closest(TILT_TARGETS);
+    if (!card || !tiltsCards() || tiltFrame) return;
+    const { clientX, clientY } = pointerEvent;
+    tiltFrame = requestAnimationFrame(() => {
+      tiltFrame = 0;
+      const box = card.getBoundingClientRect(), x = (clientX - box.left) / box.width, y = (clientY - box.top) / box.height;
+      card.style.setProperty('--tilt-x', ((0.5 - y) * 12).toFixed(2) + 'deg');
+      card.style.setProperty('--tilt-y', ((x - 0.5) * 14).toFixed(2) + 'deg');
+      card.style.setProperty('--glare-x', (x * 100).toFixed(1) + '%');
+      card.style.setProperty('--glare-y', (y * 100).toFixed(1) + '%');
+      card.classList.add('tilting');
+    });
+  });
+  document.addEventListener('pointerout', pointerEvent => {
+    const card = pointerEvent.target.closest && pointerEvent.target.closest(TILT_TARGETS);
+    if (!card || (pointerEvent.relatedTarget && card.contains(pointerEvent.relatedTarget))) return;
+    card.classList.remove('tilting');
+    card.style.removeProperty('--tilt-x'); card.style.removeProperty('--tilt-y');
+  });
+  // Las columnas de Intentos y Trazada se pliegan hacia su lado; los demás paneles, hacia arriba
+  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') ? (folded ? '▸' : '◂') : panel.classList.contains('map-panel') ? (folded ? '◂' : '▸') : (folded ? '▸' : '▾');
   const panelKey = panel => (state.view ? state.view.name : '') + ':' + [...panel.parentElement.children].filter(item => item.classList.contains('panel')).indexOf(panel);
   new MutationObserver(() => {
     document.querySelectorAll('.panel > .panel-header:first-child:not([data-foldable])').forEach(header => {
-      if (!header.querySelector('h2')) return;
+      if (!header.querySelector('h2') || header.closest('.options-page')) return;   // en Opciones no hace falta plegar
       header.dataset.foldable = '1';
       const panel = header.parentElement;
       if (foldedPanels.has(panelKey(panel))) panel.classList.add('folded');
-      header.insertAdjacentHTML('beforeend', '<button type="button" class="fold-button" data-fold-panel="1" title="Plegar o desplegar">' + (panel.classList.contains('folded') ? '▸' : '▾') + '</button>');
+      header.insertAdjacentHTML('beforeend', '<button type="button" class="fold-button" data-fold-panel="1" title="Plegar o desplegar">' + foldArrow(panel, panel.classList.contains('folded')) + '</button>');
     });
   }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', clickEvent => {
     const button = clickEvent.target.closest('[data-fold-panel]');
     if (!button) return;
     const panel = button.closest('.panel'), folded = panel.classList.toggle('folded'), key = panelKey(panel);
-    button.textContent = folded ? '▸' : '▾';
+    button.textContent = foldArrow(panel, folded);
     if (folded) foldedPanels.add(key); else foldedPanels.delete(key);
     writeStored('swgr.foldedPanels', [...foldedPanels].join('|'));
-    if (!folded && state.analysis) drawAll();   // the canvases of an unfolded panel are drawn again at their size
+    if (state.analysis) requestAnimationFrame(drawAll);   // las columnas cambian de ancho: las gráficas y el mapa se dibujan a su tamaño nuevo
   });
   state.categoryFilter = readStored('swgr.categoryFilter', 'all');
   document.addEventListener('click', clickEvent => {
@@ -199,10 +239,9 @@
     html += '<div class="segmented" role="group" aria-label="Vista"><button type="button" data-home-view="cards" aria-pressed="' + (state.homeView !== 'times') + '">Tarjetas</button>' +
       '<button type="button" data-home-view="times" aria-pressed="' + (state.homeView === 'times') + '">Tiempos</button></div></div>';
     if (categories.length) {
-      const countIn = category => allIds.filter(id => categoryOf(id) === category && passesVehicle(id)).length;
       html += '<div class="filters categories" role="group" aria-label="Filtrar por categoría"><button type="button" data-category-filter="all" aria-pressed="' + (state.categoryFilter === 'all') + '">Todas</button>' +
         categories.map(category => '<button type="button" data-category-filter="' + category + '" aria-pressed="' + (+state.categoryFilter === category) + '">' +
-          escapeHtml(CATEGORY_NAMES[category] || ('Categoría ' + category)) + ' <span class="muted">' + countIn(category) + '</span></button>').join('') + '</div>';
+          escapeHtml(CATEGORY_NAMES[category] || ('Categoría ' + category)) + '</button>').join('') + '</div>';
     }
     // Golds: records that beat the #1 time
     const listed = events.filter(event => passes(event.id)).map(event => ({ recordTime: event.recordTime, targetTime: event.targetSource && event.targetSource.target }))
@@ -214,7 +253,8 @@
       html += '<section class="planet-group"><header class="planet-group-header">' + (group.planet ? '<span class="planet">' + escapeHtml(group.planet) + '</span>' + aurebeshHtml(group.planet) : '<span class="planet-group-none">Otros planetas</span>') +
         '<span class="muted">' + count + (count === 1 ? ' evento' : ' eventos') + '</span></header>';
       if (state.homeView === 'times') { html += timesGrid(group) + '</section>'; continue; }
-      if (group.events.length) html += '<div class="event-grid">' + group.events.map(eventCard).join('') + '</div>';
+      // Una fila por planeta, que se desplaza de lado (carrusel)
+      if (group.events.length) html += '<div class="event-carousel"><button type="button" class="carousel-button" data-carousel="-1" hidden>◂</button><div class="event-grid">' + group.events.map(eventCard).join('') + '</div><button type="button" class="carousel-button" data-carousel="1" hidden>▸</button></div>';
       if (group.recordsOnly.length) {
         group.recordsOnly.sort((first, second) => first.title.localeCompare(second.title));
         html += '<div class="planet-group-others"><span class="label">Sin telemetría todavía</span><div class="compact-list">' +
@@ -226,6 +266,7 @@
     }
     html += '<div class="note">Solo eventos de Arcade: el vehículo y la build son fijos y los tiempos se pueden comparar. Las carreras con build variable se graban pero no aparecen aquí. Los récords sin telemetría vienen del juego; corre el evento con el mod para ver sus vueltas y sectores.</div>';
     byId('main').innerHTML = html;
+    refreshCarousels();
   }
   const figure = (label, value, detail) => '<div class="figure"><span class="label">' + label + '</span><span class="value">' + value + '</span><span class="detail">' + (detail || '&nbsp;') + '</span></div>';
 

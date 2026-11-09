@@ -62,3 +62,110 @@ html.hologram.hologram-strong .hologram-band { height: 42vh; filter: brightness(
 html.hologram.hologram-strong .panel, html.hologram.hologram-strong .event-card, html.hologram.hologram-strong .tile, html.hologram.hologram-strong .summary-strip {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hologram) 22%, transparent), 0 0 30px color-mix(in srgb, var(--hologram) 12%, transparent); }
 html.no-animations *, html.no-animations *::before, html.no-animations *::after { transition: none !important; animation: none !important; }
+
+/* Holograma: la tarjeta deja de ser una caja. Sin fondo ni borde, la imagen del planeta se funde con la página y solo
+   quedan los bloques flotando a distintas alturas, translúcidos, con esquinas en corchete y un halo de luz. */
+html.hologram .event-grid { padding: 26px 22px 38px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); }
+html.hologram .event-card, html.hologram.hologram-strong .event-card { --bracket: var(--hologram); --lift: 1; overflow: visible; transform-style: preserve-3d; background: none; border: 0; box-shadow: none;
+  transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform .12s ease-out; }
+html.hologram .event-card:hover { box-shadow: none; transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); }
+html.hologram .event-card::before { display: none; }
+html.hologram .event-card.tilting { --bracket: var(--accent); --lift: 1.8; z-index: 2; }
+html.hologram .event-card > .event-art { border: 0; opacity: .75; transform: translateZ(calc(6px * var(--lift))); transition: transform .15s ease-out;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent);
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted) { --depth: 40px; }
+html.hologram .event-card > .event-figures { --depth: 58px; }
+html.hologram .event-card > .muted { transform: translateZ(calc(22px * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted), html.hologram .event-card > .event-figures > .figure {
+  padding: 8px 10px; border: 0; box-shadow: none;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--bracket) 55%, transparent);
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 16%, transparent), transparent 100%); }
+html.hologram .event-card > div:not(.event-art):not(.event-figures):not(.muted) { transform: translateZ(calc(var(--depth) * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card > .event-figures { transform-style: preserve-3d; transform: translateZ(calc(var(--depth) * var(--lift))); transition: transform .15s ease-out; }
+html.hologram .event-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), color-mix(in srgb, var(--hologram) 16%, transparent), transparent 50%); mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
+html.hologram .event-card.tilting::after { opacity: 1; }
+html.hologram.no-animations .event-card { transition: none; }
+
+/* Holograma, vista de tiempos: lo mismo que las tarjetas, sin caja y con los datos a distintas alturas */
+html.hologram .times-grid { gap: 16px; padding: 10px 4px 16px; }
+html.hologram .time-tile, html.hologram .time-tile.clickable:hover { --bracket: var(--hologram); --lift: 1; position: relative; border: 0; box-shadow: none; transform-style: preserve-3d; padding: 12px 14px;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform .12s ease-out;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 14%, transparent), transparent 100%); }
+html.hologram .time-tile.tilting { --bracket: var(--accent); --lift: 2; z-index: 2; }
+html.hologram .time-tile > * { transition: transform .15s ease-out; text-shadow: 0 0 10px color-mix(in srgb, var(--bracket) 45%, transparent); }
+html.hologram .time-tile > .time-tile-title { transform: translateZ(calc(16px * var(--lift))); }
+html.hologram .time-tile > .time-tile-record { transform: translateZ(calc(30px * var(--lift))); }
+html.hologram .time-tile > .time-tile-detail { transform: translateZ(calc(10px * var(--lift))); }
+html.hologram .time-tile > .time-tile-friends { transform: translateZ(calc(20px * var(--lift))); border-top: 0; }
+html.hologram.no-animations .time-tile { transition: none; }
+
+/* Holograma en toda la app: paneles y menús sin caja, solo esquinas en corchete y un relleno que se apaga hacia el borde */
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar), html.hologram.hologram-strong :is(.panel, .tile, .summary-strip) { --bracket: var(--hologram); border: 0; box-shadow: none; border-radius: 0;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 8%, transparent), transparent 100%); }
+html.hologram :is(.panel, .tile, .summary-strip)::before { display: none; }
+html.hologram .attempt:not(.focused) { background: none; border-color: color-mix(in srgb, var(--hologram) 18%, transparent); }
+html.hologram tr.group-row td { background: none; }
+
+/* Holograma: esquinas en corchete redondeadas. Es un borde completo con bordes romos del que solo se dejan ver las cuatro esquinas */
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar, .time-tile, .event-card > div:not(.event-art):not(.event-figures):not(.muted), .event-card > .event-figures > .figure) { position: relative; --corner: 16px; --round: 4px; border-radius: var(--round); }
+html.hologram :is(.panel, .tile, .summary-strip, .versus-bar, .time-tile, .event-card > div:not(.event-art):not(.event-figures):not(.muted), .event-card > .event-figures > .figure)::before { content: ""; display: block; position: absolute; inset: 0; left: 0; top: 0; width: auto; height: auto; pointer-events: none; opacity: 1; clip-path: none; background: none;
+  box-sizing: border-box; border: 2px solid var(--bracket); border-radius: var(--round);
+  -webkit-mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat;
+  mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat; }
+/* Holograma: botones y apartados de Opciones como las tarjetas, flotando y girando hacia el ratón */
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button) { --bracket: var(--hologram); --corner: 9px; --round: 3px; position: relative; border: 0; border-radius: var(--round); box-shadow: none; clip-path: none;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bracket) 12%, transparent), transparent 100%);
+  transform: perspective(500px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform .12s ease-out; }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)::before { content: ""; position: absolute; inset: 0; pointer-events: none; box-sizing: border-box; border: 2px solid var(--bracket); border-radius: var(--round);
+  -webkit-mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat;
+  mask: linear-gradient(#000, #000) 0 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 0 / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 0 100% / var(--corner) var(--corner) no-repeat, linear-gradient(#000, #000) 100% 100% / var(--corner) var(--corner) no-repeat; }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button).tilting, html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { --bracket: var(--accent); }
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { color: #fff; background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 100%); }
+html.hologram .options-nav { gap: 10px; }
+html.hologram.no-animations :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button) { transition: none; }
+/* Galactic Racer: mismos tamaños de títulos y botones que los demás temas (su letra es más ancha) */
+html[data-theme="galactic"] h2 { display: inline-flex; flex-direction: row; gap: 8px; align-items: center; padding: 0; border: 0; font-size: 0.76rem; }
+html[data-theme="galactic"] h2 .aurebesh { order: 0; margin: 0; }
+html[data-theme="galactic"] :is(.button, .top-button) { letter-spacing: 0.05em; }
+
+/* Holograma: lo seleccionado se ve de un vistazo, relleno de color (en algunos temas el color de los corchetes y el de acento casi coinciden) */
+html.hologram :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button)[aria-pressed="true"] { color: #fff; font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 62%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Holograma: filtros todos iguales, sin el contorno del grupo */
+html.hologram .filter-group { border: 0; background: none; box-shadow: none; gap: 6px; overflow: visible; border-radius: 0; }
+html.hologram .filter-group button { border: 0 !important; border-radius: 3px !important; }
+html.hologram .filter-group::before { display: none; }
+html.hologram .filters { gap: 6px; }
+html.hologram .filters button, html.hologram .filter-group button { flex: 0 0 auto; min-width: 112px; padding: 6px 14px; margin: 0; text-align: center; }
+
+/* Holograma: el menú rápido flota sobre la página, así que lleva fondo para que se lea */
+html.hologram .transfer-menu { background: var(--panel); }
+html.hologram .transfer-option { background: none; }
+
+/* La opción seleccionada es un pequeño holograma: líneas de barrido fijas, líneas de luz que bajan y halo.
+   La posición de la luz es una sola variable animada en la raíz, así que todos los botones van al unísono. */
+@property --selected-sweep { syntax: '<number>'; inherits: true; initial-value: 0; }
+@keyframes selectedSweep { from { --selected-sweep: 0; } to { --selected-sweep: 1; } }
+html.selected-holo { animation: selectedSweep var(--selected-speed, 2.8s) linear infinite; }
+html.selected-holo.no-animations { animation: none; }
+html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"] { position: relative; overflow: hidden; color: #fff;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px var(--selected-gap, 3px)), linear-gradient(color-mix(in srgb, var(--accent) 62%, transparent), color-mix(in srgb, var(--accent) 62%, transparent));
+  text-shadow: 0 0 8px color-mix(in srgb, #fff 70%, transparent), 1px 0 color-mix(in srgb, #ff2bd0 35%, transparent), -1px 0 color-mix(in srgb, #2be3ff 35%, transparent); }
+html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 200%; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(180deg, transparent 38%, rgba(255, 255, 255, .42) 50%, transparent 62%) 0 0 / 100% calc(50% / var(--selected-bands, 1)) repeat-y;
+  transform: translateY(calc((var(--selected-sweep) - 1) * 50% / var(--selected-bands, 1))); }
+html.selected-holo.no-animations :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { display: none; }
+/* Banda de luz del fondo: velocidad y número de líneas configurables */
+html.hologram .hologram-band, html.hologram.hologram-strong .hologram-band { animation-duration: var(--page-speed, 7s); }
+html.hologram .hologram-band.band-second, html.hologram .hologram-band.band-third { display: none; }
+html.hologram.page-bands-2:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.5); }
+html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.3333); }
+html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-third { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.6667); }
