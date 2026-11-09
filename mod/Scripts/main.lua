@@ -6,7 +6,7 @@
 -- Data sources taken from N0M4D's MiniMap and LapRecord.
 -- Shortcuts: Ctrl+F9 pauses/resumes recording · Ctrl+F10 shows/hides the timing panel.
 
-local VERSION = '0.9.31'   -- always the same as the app's
+local VERSION = '0.9.41'   -- always the same as the app's
 local VIRTUAL_SECTOR_LENGTH_CM = 250000   -- length of the virtual sectors of point-to-point stages
 local SCRIPTS_FOLDER = assert(debug.getinfo(1, 'S').source:match('^@(.+[\\/])'))
 local MOD_FOLDER = SCRIPTS_FOLDER .. '../'
@@ -967,6 +967,8 @@ local function bestTimesKey(race, sectorCount, startLap)
         local key = 'EVENT|' .. race.event.id .. '|' .. sectorCount
         -- Arranque lanzado: tiempos desde el GO, con su propia clave (los antiguos, desde la puerta, no valen)
         -- Con bonificación (Precisión), los tiempos con ella descontada, también con su propia clave
+        -- (arranque lanzado y bonificación a la vez: clave nueva, los de antes descontaban los puntos dos veces)
+        if race.rollingStart and race.usesBonus then return key .. '|rolling|bonus2' end
         if race.rollingStart or race.usesBonus then return key .. (race.rollingStart and '|rolling' or '') .. (race.usesBonus and '|bonus' or '') end
         if not bestTimes[key] and bestTimes[beforeEventsKey] then bestTimes[key] = bestTimes[beforeEventsKey] end
         return key
@@ -993,7 +995,8 @@ local function setFinishLine(race, checkpoint)
     end
     -- Arranque lanzado: la puerta es el final del S1 y los checkpoints de la carrerilla no cuentan
     if race.rollingStart and race.startCheckpoint then
-        local afterGate = {race.startCheckpoint}
+        -- (si la puerta queda antes del GO no es el final de ningún sector: el S1 acaba en el checkpoint siguiente)
+        local afterGate = race.gateBeforeGo and {} or {race.startCheckpoint}
         for _, index in ipairs(order) do
             if race.checkpointDistances[index] > race.startDistance then afterGate[#afterGate + 1] = index end
         end
@@ -1033,6 +1036,19 @@ end
 -- Closes a lap that ends at lapEnd and lasts lapTime.
 local function closeLap(race, lapEnd, lapTime, isOfficial)
     local lapStart = lapEnd - lapTime
+    -- Una sola pasada cuyo trazado acaba cerca de donde empieza (parece circuito cerrado): si la vuelta oficial
+    -- empieza en un checkpoint más de 1 s después del GO, es un tramo con carrerilla. Se recuerda para este circuito.
+    if race.isClosedCircuit and race.lapCount == 1 and race.finishCheckpoint and race.eventZero and lapStart - race.eventZero > 1 then
+        for _, crossing in ipairs(race.crossings) do
+            if crossing.checkpoint ~= race.finishCheckpoint and math.abs(crossing.time - lapStart) < 0.35 then
+                race.isClosedCircuit = false
+                learnedTracks['stage|' .. trackKey(race)] = 1
+                saveLearnedTracks()
+                log('Este circuito es una sola pasada con carrerilla: se trata como tramo abierto')
+                break
+            end
+        end
+    end
     -- Point-to-point stage: the checkpoint crossed right when the clock starts is the start
     if not race.isClosedCircuit and race.finishCheckpoint and not race.startCheckpoint then
         for _, crossing in ipairs(race.crossings) do
@@ -1048,12 +1064,14 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     end
     -- Arranque lanzado: tramo de una vuelta en el que el reloj de la vuelta empieza en una puerta,
     -- más de 1 s después del GO. La carrerilla (GO a la puerta) es el S1 y el tiempo es el total.
+    -- También puede empezar más de 1 s antes del GO (runUp negativo): el tiempo sigue siendo el total.
     local runUp = race.eventZero and (lapStart - race.eventZero)
-    local rolling = not race.isClosedCircuit and race.lapCount == 1 and race.startCheckpoint ~= nil and runUp ~= nil and runUp > 1
+    local rolling = not race.isClosedCircuit and race.lapCount == 1 and race.startCheckpoint ~= nil and runUp ~= nil and math.abs(runUp) > 1
     local rollingJustLearned = false
     if rolling and not race.rollingStart then
         race.rollingStart, rollingJustLearned = true, true
-        learnedTracks['rolling|' .. trackKey(race)] = 1
+        race.gateBeforeGo = runUp < 0 or nil
+        learnedTracks['rolling|' .. trackKey(race)] = race.gateBeforeGo and 2 or 1
         saveLearnedTracks()
         setFinishLine(race, race.finishCheckpoint)
         log(string.format('Arranque lanzado: %.3f s de carrerilla hasta la puerta (checkpoint %d)', runUp, race.startCheckpoint))
@@ -1063,8 +1081,13 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     if rolling then
         -- La carrerilla, con el total del juego si ya lo da (así S1 + resto = total exacto)
         local gameTotal = readProperty(race.raceComponent, 'EventFinishTime')
-        if type(gameTotal) == 'number' and gameTotal > lapTime and gameTotal - lapTime < runUp + 1 then runUp = gameTotal - lapTime end
+        if type(gameTotal) == 'number' and gameTotal > 0 then
+            -- El total del juego ya lleva descontados los puntos: se le suman para tener el tiempo en pista desde el GO
+            local trackTotal = gameTotal + bonusData.between(race, race.eventZero, lapEnd)
+            if math.abs(trackTotal - lapTime - runUp) < 1 then runUp = trackTotal - lapTime end
+        end
     end
+    local gateBeforeGo = rolling and runUp < 0
     -- If a checkpoint is crossed twice (crash, respawn) the first crossing counts: the lost time
     -- goes into the next sector.
     local firstCrossings, repeatedCrossings = {}, 0
@@ -1084,18 +1107,19 @@ local function closeLap(race, lapEnd, lapTime, isOfficial)
     for _, resetTime in ipairs(race.resetTimes) do if resetTime > lapStart and resetTime <= lapEnd then resetCount = resetCount + 1 end end
     local expectedCrossings = #race.checkpointDistances - (race.finishCheckpoint and 1 or 0) - (race.startCheckpoint and 1 or 0)
     -- Arranque lanzado: solo cuentan los checkpoints entre la puerta y la meta (el orden empieza por la puerta)
-    if rolling then expectedCrossings = #race.sectorCheckpointOrder - 1 end
+    if rolling then expectedCrossings = #race.sectorCheckpointOrder - (gateBeforeGo and 0 or 1) end
     local sectorsValid = #crossingsInLap == expectedCrossings and not rollingWithoutGo
     local sectorTimes, previousBoundary = {}, lapStart
     local boundaryTimes = {lapStart}   -- donde empieza y acaba cada sector (para la bonificación)
-    if rolling then sectorTimes[1] = runUp; boundaryTimes = {lapStart - runUp, lapStart} end
+    if gateBeforeGo then previousBoundary = lapStart - runUp; boundaryTimes = {previousBoundary}
+    elseif rolling then sectorTimes[1] = runUp; boundaryTimes = {lapStart - runUp, lapStart} end
     for _, crossing in ipairs(crossingsInLap) do
         sectorTimes[#sectorTimes + 1] = crossing.time - previousBoundary; previousBoundary = crossing.time
         boundaryTimes[#boundaryTimes + 1] = crossing.time
     end
     sectorTimes[#sectorTimes + 1] = lapEnd - previousBoundary
     boundaryTimes[#boundaryTimes + 1] = lapEnd
-    local sectorCount = expectedCrossings + (rolling and 2 or 1)
+    local sectorCount = expectedCrossings + ((rolling and not gateBeforeGo) and 2 or 1)
     -- Tiempo que cuenta: la vuelta oficial o, con arranque lanzado, el total (carrerilla + vuelta)
     local officialLapTime = lapTime
     if rolling then lapTime = lapTime + runUp end
@@ -2743,8 +2767,10 @@ local function recordSample(race, playerController)
             distance = race.direction == -1 and (routeLength - routeDistance) or routeDistance
             race.lapStartTime = now
             race.runStartDistance = distance   -- donde arrancas (para el DIF desde el GO en los arranques lanzados)
+            if race.lapCount == 1 and learnedTracks['stage|' .. trackKey(race)] then race.isClosedCircuit = false end
             race.startDistance = learnedTracks['start|' .. trackKey(race)]
             race.rollingStart = race.lapCount == 1 and learnedTracks['rolling|' .. trackKey(race)] ~= nil or nil
+            race.gateBeforeGo = race.rollingStart and learnedTracks['rolling|' .. trackKey(race)] == 2 or nil
             -- Bonificación de tiempo (Precisión): el juego dice si el evento la usa
             local startViewModel = readProperty(race.gameState, 'RaceEventViewModel')
             race.usesBonus = isValid(startViewModel) and readProperty(startViewModel, 'bWantsBonusTimer') == true or nil

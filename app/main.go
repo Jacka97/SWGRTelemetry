@@ -12,7 +12,7 @@ import (
 )
 
 // The app and the mod always carry the same version number (both will become 1.0 together)
-const appVersion = "0.9.31"
+const appVersion = "0.9.41"
 
 // Version of the mod this app goes with (the app warns when the mod's is a different one)
 const expectedModVersion = appVersion

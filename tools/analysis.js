@@ -188,7 +188,9 @@ function analyzeSession(route, samples, name, rolling) {
   // Open stage (point to point): the start is the first checkpoint in the driving direction and each
   // lap goes from its crossing to the finish; on a circuit, from finish to finish.
   const firstPoint = points[0], lastPoint = points[points.length - 1];
-  const isPointToPoint = Math.hypot(lastPoint[1] - firstPoint[1], lastPoint[2] - firstPoint[2]) > 2000 && finishCheckpoint !== null;
+  // Una sola pasada: el trazado acaba cerca de donde empieza, pero la meta oficial solo se cruza una vez (es un tramo, no un circuito)
+  const singlePass = finishCheckpoint !== null && finishTimes.length === 1 && officialTimes.some(officialTime => Math.abs(officialTime - finishTimes[0]) < 1.0);
+  const isPointToPoint = (Math.hypot(lastPoint[1] - firstPoint[1], lastPoint[2] - firstPoint[2]) > 2000 && finishCheckpoint !== null) || singlePass;
   let startCheckpoint = null;
   if (isPointToPoint) startCheckpoint = checkpointDistances.map((_, checkpoint) => checkpoint).find(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] < finishDistance) ?? null;
   let originDistance = startCheckpoint !== null ? checkpointDistances[startCheckpoint] : finishDistance;
@@ -198,7 +200,9 @@ function analyzeSession(route, samples, name, rolling) {
   if (isPointToPoint && rolling && finishTimes.length) {
     const end = finishTimes[0];
     const goMarker = samples.find(sample => sample.go);
-    const goTime = rolling.total > 0 ? end - rolling.total : (goMarker ? goMarker.time : null);
+    // El total del juego ya lleva descontados los puntos de Precisión: se le suman para llegar al GO
+    const allBonus = samples.reduce((sum, sample) => sum + (sample.bonus || 0), 0);
+    const goTime = rolling.total > 0 ? end - rolling.total - allBonus : (goMarker ? goMarker.time : null);
     const gateTime = rolling.officialLap > 0 ? end - rolling.officialLap : null;
     const gate = gateTime === null ? null : crossings.filter(crossing => crossing.checkpoint !== finishCheckpoint && Math.abs(crossing.time - gateTime) < 0.5)
       .sort((first, second) => Math.abs(first.time - gateTime) - Math.abs(second.time - gateTime))[0];
@@ -209,7 +213,8 @@ function analyzeSession(route, samples, name, rolling) {
       startCheckpoint = gate.checkpoint;
       originDistance = goSample.distance;
       const gateDistance = checkpointDistances[gate.checkpoint];
-      sectorCheckpoints = [gate.checkpoint].concat(checkpointDistances.map((_, checkpoint) => checkpoint)
+      // Si la puerta queda antes del GO no es el final de ningún sector
+      sectorCheckpoints = (gate.time < goTime ? [] : [gate.checkpoint]).concat(checkpointDistances.map((_, checkpoint) => checkpoint)
         .filter(checkpoint => checkpoint !== finishCheckpoint && checkpointDistances[checkpoint] > gateDistance));
       rollingSpan = [goTime, end];
     }
@@ -248,7 +253,7 @@ function analyzeSession(route, samples, name, rolling) {
     const official = officialTimes.some(officialTime => Math.abs(officialTime - end) < 1.0);
     const incident = repeatedCrossings > 0 || resetTimes.some(resetTime => resetTime > start && resetTime <= end);
     // Trace: distance from the finish line and lap time
-    const trace = [];
+    const trace = [], bonusPoints = [];   // bonusPoints: dónde ganó puntos de Precisión en esta vuelta
     for (const sample of samples) {
       if (sample.time < start - 0.05 || sample.time > end + 0.05) continue;
       let lapDistance;
@@ -258,10 +263,11 @@ function analyzeSession(route, samples, name, rolling) {
         if (sample.time - start < 2 && lapDistance > 0.8 * length) lapDistance -= length;
         if (end - sample.time < 2 && lapDistance < 0.2 * length) lapDistance += length;
       }
+      if (sample.bonus && sample.time > start && sample.time <= end) bonusPoints.push({ distance: lapDistance, x: sample.x, y: sample.y, value: sample.bonus });
       trace.push({ distance: lapDistance, time: sample.time - start - bonusBetween(start, sample.time), x: sample.x, y: sample.y, speed: sample.speed, boost: sample.boost || '', trail: sample.trail || '', z: sample.z, heading: sample.heading });
     }
     laps.push({ session: name, number: laps.length + 1, start, end, time, bonus: lapBonus, sectors: allSectors ? sectors : null,
-      measuredSectors: sectors, official, incident, trace });
+      measuredSectors: sectors, official, incident, trace, bonusPoints });
   }
   return { name, direction, routeLength: length, finishDistance, finishCheckpoint, startCheckpoint, isPointToPoint, originDistance, rolling: !!rollingSpan,
     span: isPointToPoint ? finishDistance - originDistance : length, sectorCount, sectorStarts, laps };

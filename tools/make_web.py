@@ -39,7 +39,7 @@ JS_FILES = [
 ]
 def read_bytes(path):
     with open(path, 'rb') as file:
-        return file.read()
+        return file.read().replace(b'\r\n', b'\n')   # los archivos pueden venir con CRLF (git en Windows): la plantilla va siempre con LF
 def join_files(folder, names, extension):
     return b''.join(read_bytes(WEB + 'src/' + folder + '/' + name + '.' + extension) for name in names)
 page = read_bytes(WEB + 'src/page.html')
