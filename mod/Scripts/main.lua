@@ -2347,6 +2347,7 @@ ghostSettings.TRAIL_LEVELS = {
 ghostSettings.EDGE_LIGHTEN = 0.5
 function ghostSettings.read()
     local enabled, transparency, trail, flame, trailTransparency, flameMode = 'on', 'medium', 'off', 'on', 'low', 'game'   -- valores por defecto
+    local source = 'best'
     local file = io.open(modFile('preferences.txt'), 'r')
     if file then
         for line in file:lines() do
@@ -2357,6 +2358,7 @@ function ghostSettings.read()
             elseif key == 'ghost_flame' then flame = value
             elseif key == 'ghost_trail_transparency' then trailTransparency = value
             elseif key == 'ghost_flame_mode' then flameMode = value
+            elseif key == 'ghost_source' then source = value
             end
         end
         file:close()
@@ -2367,6 +2369,8 @@ function ghostSettings.read()
     ghostSettings.transparency = ghostSettings.TRANSPARENCY_LEVELS[transparency] and transparency or 'medium'
     ghostSettings.trailTransparency = ghostSettings.TRAIL_LEVELS[trailTransparency] and trailTransparency or 'low'
     ghostSettings.flameMode = (flameMode == 'own' or flameMode == 'both') and flameMode or 'game'   -- la del juego, por defecto
+    -- Fantasma a seguir: el más rápido (por defecto), siempre el tuyo o siempre el del amigo elegido en la app
+    ghostSettings.source = (source == 'mine' or source == 'friend') and source or 'best'
 end
 
 -- use: 'body' (el holograma, por defecto), 'flame' (la llama) o 'trail' (la estela, siempre igual)
@@ -2620,6 +2624,10 @@ local function startRaceGhost(race, pawn)
     if friend and friend.clockKind ~= 'event' then friend = nil end   -- rebuilt from laps by older apps: out of step at the start
     local ghost = own
     if friend and (not own or friend.total < own.total) then ghost = friend end
+    -- Lo elegido en la app; si no está en este evento, el más rápido de los que haya
+    if ghostSettings.source == 'mine' and own then ghost = own
+    elseif ghostSettings.source == 'friend' and friend then ghost = friend
+    elseif ghostSettings.source ~= 'best' then log('Fantasma: no hay el que elegiste en este evento, se usa el más rápido') end
     if not ghost then log('Fantasma: aún no hay carrera guardada en este evento (se guarda la primera que termines)'); return end
     local needsHeights = false
     for _, point in ipairs(ghost.points) do if not point.z then needsHeights = true; break end end

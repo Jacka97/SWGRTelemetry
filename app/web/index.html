@@ -446,10 +446,6 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
 .options-page .group > span:first-child { display: flex; align-items: center; gap: 7px; }
 .options-page .group > span:first-child .option-icon { width: 16px; height: 16px; color: var(--accent); }
 
-.tick-option { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
-.tick-option input { width: 16px; height: 16px; accent-color: var(--accent); }
-/* Con el tick puesto mandan los ajustes de los botones; los del fondo se conservan, pero no se tocan */
-.options-page .group.linked { opacity: .4; pointer-events: none; }
 
 /* Apariencia de la app: en columnas, para que quepa entera sin desplazar la ventana */
 @media (min-width: 901px) {
@@ -468,6 +464,9 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
   .options-page { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
   .options-content { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
 }
+
+/* Apariencia: subtítulos de cada bloque de ajustes */
+.options-subtitle { margin: 10px 0 2px; font-family: var(--aurebesh-font) var(--font-display); font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 /* Loading screen */
 .loader { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 18px;
   background: radial-gradient(800px 420px at 50% 40%, color-mix(in srgb, var(--accent-deep) 22%, transparent), transparent 70%), var(--background); transition: opacity .45s ease, visibility .45s; }
@@ -516,10 +515,10 @@ main.pending { opacity: 0; pointer-events: none; }
 .event-view { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
 .event-body { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(380px, 0.9fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; gap: 12px; min-height: 0; }
 .event-left, .event-center, .analysis-map { min-height: 0; min-width: 0; }
-.event-left { display: grid; grid-template-rows: minmax(120px, 1fr); overflow: hidden; }
+.event-left { display: grid; grid-template-rows: minmax(120px, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }   /* la columna no crece con el contenido */
 .attempts-panel > .panel-header { flex-wrap: nowrap; }
 .attempts-panel > .panel-header > .muted { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.attempts-panel { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
+.attempts-panel { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); min-height: 0; overflow: hidden; }   /* su columna interior tampoco crece con el contenido */
 .attempt-list { overflow: auto; min-height: 0; display: grid; gap: 3px; align-content: start; padding-right: 2px; }
 .attempt { display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; row-gap: 1px; align-items: center; padding: 5px 8px; border: 1px solid var(--line);
   background: var(--surface-low); cursor: pointer; font-size: 0.82rem; }
@@ -529,7 +528,7 @@ main.pending { opacity: 0; pointer-events: none; }
 .attempt-date { color: var(--text-muted); font-family: var(--font-data); }
 .attempt-total { font-size: 0.95rem; text-align: right; }
 .attempt-laps { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 0 9px; color: var(--text-muted); font-size: 0.74rem; }
-.event-center { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
+.event-center { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
 /* Datos del intento en columnas fijas y etiquetas en su propia fila: siempre en el mismo sitio, sea cual sea el evento */
 .focus-info { display: grid; grid-template-columns: 10.5rem 5.5rem auto 5.5rem; justify-content: start; align-items: center; gap: 4px 10px; font-size: 0.84rem; min-height: 1.6em; }
 .focus-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; min-height: 1.7em; align-items: center; }
@@ -560,10 +559,6 @@ html.versus-folded .versus-side { display: none; }
   html:not(.mode-simple) .event-body { grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr); grid-template-rows: 170px minmax(0, 1fr); }
   html:not(.mode-simple) .event-left { grid-column: 1 / -1; }
 }
-/* El panel central solo enseña su botón de plegar, en la esquina; el título sale al plegarlo */
-.center-header { position: absolute; top: 8px; right: 8px; z-index: 3; border: 0; padding: 0; margin: 0; background: none; }
-.event-center:not(.folded) > .center-header > h2 { display: none !important; }
-.event-center:not(.folded) > .focus-info { padding-right: 44px; }
 /* Columnas: al plegar una se queda en una tira y las demás ocupan el sitio */
 @media (min-width: 1251px) {
   html:not(.mode-simple) .event-body { --left: 300px; --center: minmax(0, 1fr); --right: minmax(380px, 0.9fr); grid-template-columns: var(--left) var(--center) var(--right); }
@@ -571,20 +566,23 @@ html.versus-folded .versus-side { display: none; }
   html:not(.mode-simple) .event-body:has(> .event-center.folded) { --center: 46px; --right: minmax(0, 1fr); }
   html:not(.mode-simple) .event-body:has(> .analysis-map > .map-panel.folded) { --right: 46px; }
   html:not(.mode-simple) .event-body:has(> .event-center.folded):has(> .analysis-map > .map-panel.folded) { --left: minmax(0, 1fr); }
+  html:not(.mode-simple) .event-body:has(> .event-left > .attempts-panel.folded):has(> .event-center.folded):has(> .analysis-map > .map-panel.folded) { --left: 46px; justify-content: start; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
-  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; margin: 0; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { writing-mode: vertical-rl; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
-  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; position: static; }
 }
 @media (min-width: 901px) {
   html.mode-simple .event-body:has(> .event-left > .attempts-panel.folded) { grid-template-columns: 46px minmax(0, 1fr); }
   html.mode-simple .event-body:has(> .analysis-map > .map-panel.folded) { grid-template-columns: minmax(0, 1fr) 46px; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
-  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; margin: 0; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { writing-mode: vertical-rl; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
-  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; position: static; }
 }
 /* Modo simple: Intentos y Amigos, pestañas del mismo panel */
 html.mode-simple .attempts-panel { display: flex; flex-direction: column; gap: 8px; }
@@ -669,6 +667,20 @@ canvas { display: block; width: 100%; }
 .note { font-size: 0.82rem; color: var(--text-muted); max-width: 90ch; }
 #map { cursor: grab; touch-action: none; }
 #map.dragging { cursor: grabbing; }
+
+/* Intentos: el panel no puede ser más ancho que su columna (el texto de ayuda sin partir lo ensanchaba y cortaba la lista y el botón de plegar) */
+.event-left > .attempts-panel, .attempts-panel .attempt-list, .attempts-panel .attempt { min-width: 0; }
+.attempts-panel > .panel-header > .fold-button { flex: none; }
+/* Trazada: el botón de plegar arriba a la derecha, a la altura del título, aunque los botones del mapa bajen de línea */
+.map-panel > .panel-header { position: static; padding-right: 40px; }
+.map-panel.folded > .panel-header { padding-right: 0; }
+.map-panel.folded > .panel-header > .fold-button { position: static; }
+/* Galactic Racer: el título de Trazada en amarillo como los demás (lleva un color propio para el mapa) */
+html[data-theme="galactic"] .map-panel > .panel-header > h2 { color: var(--warning) !important; }
+/* Botón de plegar de las tres columnas: el mismo sitio en todas, a 8 px de la esquina de arriba a la derecha de su panel */
+:is(.attempts-panel, .event-center, .map-panel):not(.folded) > .panel-header > .fold-button { position: absolute; top: 8px; right: 8px; z-index: 3; margin: 0; }
+.attempts-panel:not(.folded) > .panel-header { padding-right: 40px; position: static; }   /* el botón se mide desde el panel, no desde su cabecera */
+.event-center:not(.folded) > .center-header { padding-right: 40px; }   /* Análisis con su título, como Intentos y Trazada */
 /* Notices (versions, safe mode) */
 .notices { display: grid; gap: 6px; padding: 0 22px; max-width: 1500px; width: 100%; margin: 0 auto; }
 .notices:not(:empty) { padding-top: 14px; }
@@ -845,25 +857,32 @@ html.hologram .filters button, html.hologram .filter-group button { flex: 0 0 au
 html.hologram .transfer-menu { background: var(--panel); }
 html.hologram .transfer-option { background: none; }
 
-/* La opción seleccionada es un pequeño holograma: líneas de barrido fijas, líneas de luz que bajan y halo.
-   La posición de la luz es una sola variable animada en la raíz, así que todos los botones van al unísono. */
-@property --selected-sweep { syntax: '<number>'; inherits: true; initial-value: 0; }
-@keyframes selectedSweep { from { --selected-sweep: 0; } to { --selected-sweep: 1; } }
-html.selected-holo { animation: selectedSweep var(--selected-speed, 2.8s) linear infinite; }
-html.selected-holo.no-animations { animation: none; }
-html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"] { position: relative; overflow: hidden; color: #fff;
-  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px var(--selected-gap, 3px)), linear-gradient(color-mix(in srgb, var(--accent) 62%, transparent), color-mix(in srgb, var(--accent) 62%, transparent));
-  text-shadow: 0 0 8px color-mix(in srgb, #fff 70%, transparent), 1px 0 color-mix(in srgb, #ff2bd0 35%, transparent), -1px 0 color-mix(in srgb, #2be3ff 35%, transparent); }
-html.selected-holo :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 200%; pointer-events: none; mix-blend-mode: screen;
-  background: linear-gradient(180deg, transparent 38%, rgba(255, 255, 255, .42) 50%, transparent 62%) 0 0 / 100% calc(50% / var(--selected-bands, 1)) repeat-y;
-  transform: translateY(calc((var(--selected-sweep) - 1) * 50% / var(--selected-bands, 1))); }
-html.selected-holo.no-animations :is(.top-button, .options-nav button, .options-page .options button, .button, .filters button, .tab-bar button, .segmented button)[aria-pressed="true"]::after { display: none; }
 /* Banda de luz del fondo: velocidad y número de líneas configurables */
 html.hologram .hologram-band, html.hologram.hologram-strong .hologram-band { animation-duration: var(--page-speed, 7s); }
 html.hologram .hologram-band.band-second, html.hologram .hologram-band.band-third { display: none; }
 html.hologram.page-bands-2:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.5); }
 html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-second { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.3333); }
 html.hologram.page-bands-3:not(.no-animations) .hologram-band.band-third { display: block; animation-delay: calc(var(--page-speed, 7s) * -0.6667); }
+
+/* Plegar y desplegar: parpadeo de holograma que se enciende (sin animaciones, no sale) */
+@keyframes foldFlicker {
+  0% { opacity: .15; filter: brightness(1.8) saturate(1.4); transform: skewX(-2deg); }
+  12% { opacity: .9; filter: brightness(1.4); transform: none; }
+  20% { opacity: .35; }
+  32% { opacity: 1; filter: brightness(1.25); }
+  44% { opacity: .6; transform: skewX(1deg); }
+  58% { opacity: 1; filter: none; transform: none; }
+  70% { opacity: .85; }
+  100% { opacity: 1; filter: none; transform: none; }
+}
+html:not(.no-animations) .panel.fold-flicker { animation: foldFlicker .45s linear; }
+
+/* Imagen de fondo: mesa holográfica (doble anillo, radios y marcas de grados), dibujado aquí, en el color del holograma, muy tenue y quieta */
+.app { position: relative; isolation: isolate; }
+html.page-image .app::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .07; background: var(--hologram);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 1200'%3E%3Ccircle cx='600' cy='600' r='420' fill='none' stroke='%23fff' stroke-width='2' stroke-opacity='.9'/%3E%3Ccircle cx='600' cy='600' r='520' fill='none' stroke='%23fff' stroke-width='1' stroke-opacity='.55'/%3E%3Cline x1='980' y1='600' x2='1160' y2='600' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='967' y1='698' x2='1141' y2='745' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='929' y1='790' x2='1085' y2='880' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='869' y1='869' x2='996' y2='996' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='790' y1='929' x2='880' y2='1085' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='698' y1='967' x2='745' y2='1141' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='600' y1='980' x2='600' y2='1160' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='502' y1='967' x2='455' y2='1141' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='410' y1='929' x2='320' y2='1085' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='331' y1='869' x2='204' y2='996' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='271' y1='790' x2='115' y2='880' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='233' y1='698' x2='59' y2='745' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='220' y1='600' x2='40' y2='600' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='233' y1='502' x2='59' y2='455' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='271' y1='410' x2='115' y2='320' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='331' y1='331' x2='204' y2='204' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='410' y1='271' x2='320' y2='115' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='502' y1='233' x2='455' y2='59' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='600' y1='220' x2='600' y2='40' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='698' y1='233' x2='745' y2='59' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='790' y1='271' x2='880' y2='115' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='869' y1='331' x2='996' y2='204' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='929' y1='410' x2='1085' y2='320' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='967' y1='502' x2='1141' y2='455' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='1020' y1='600' x2='1048' y2='600' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1019' y1='622' x2='1031' y2='623' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1018' y1='644' x2='1030' y2='645' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1015' y1='666' x2='1027' y2='668' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1011' y1='687' x2='1023' y2='690' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1006' y1='709' x2='1033' y2='716' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='999' y1='730' x2='1011' y2='733' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='992' y1='751' x2='1003' y2='755' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='984' y1='771' x2='995' y2='776' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='974' y1='791' x2='985' y2='796' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='964' y1='810' x2='988' y2='824' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='952' y1='829' x2='962' y2='835' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='940' y1='847' x2='949' y2='854' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='926' y1='864' x2='936' y2='872' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='912' y1='881' x2='921' y2='889' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='897' y1='897' x2='917' y2='917' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='881' y1='912' x2='889' y2='921' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='864' y1='926' x2='872' y2='936' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='847' y1='940' x2='854' y2='949' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='829' y1='952' x2='835' y2='962' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='810' y1='964' x2='824' y2='988' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='791' y1='974' x2='796' y2='985' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='771' y1='984' x2='776' y2='995' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='751' y1='992' x2='755' y2='1003' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='730' y1='999' x2='733' y2='1011' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='709' y1='1006' x2='716' y2='1033' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='687' y1='1011' x2='690' y2='1023' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='666' y1='1015' x2='668' y2='1027' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='644' y1='1018' x2='645' y2='1030' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='622' y1='1019' x2='623' y2='1031' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='600' y1='1020' x2='600' y2='1048' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='578' y1='1019' x2='577' y2='1031' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='556' y1='1018' x2='555' y2='1030' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='534' y1='1015' x2='532' y2='1027' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='513' y1='1011' x2='510' y2='1023' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='491' y1='1006' x2='484' y2='1033' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='470' y1='999' x2='467' y2='1011' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='449' y1='992' x2='445' y2='1003' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='429' y1='984' x2='424' y2='995' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='409' y1='974' x2='404' y2='985' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='390' y1='964' x2='376' y2='988' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='371' y1='952' x2='365' y2='962' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='353' y1='940' x2='346' y2='949' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='336' y1='926' x2='328' y2='936' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='319' y1='912' x2='311' y2='921' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='303' y1='897' x2='283' y2='917' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='288' y1='881' x2='279' y2='889' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='274' y1='864' x2='264' y2='872' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='260' y1='847' x2='251' y2='854' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='248' y1='829' x2='238' y2='835' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='236' y1='810' x2='212' y2='824' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='226' y1='791' x2='215' y2='796' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='216' y1='771' x2='205' y2='776' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='208' y1='751' x2='197' y2='755' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='201' y1='730' x2='189' y2='733' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='194' y1='709' x2='167' y2='716' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='189' y1='687' x2='177' y2='690' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='185' y1='666' x2='173' y2='668' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='182' y1='644' x2='170' y2='645' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='181' y1='622' x2='169' y2='623' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='180' y1='600' x2='152' y2='600' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='181' y1='578' x2='169' y2='577' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='182' y1='556' x2='170' y2='555' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='185' y1='534' x2='173' y2='532' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='189' y1='513' x2='177' y2='510' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='194' y1='491' x2='167' y2='484' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='201' y1='470' x2='189' y2='467' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='208' y1='449' x2='197' y2='445' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='216' y1='429' x2='205' y2='424' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='226' y1='409' x2='215' y2='404' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='236' y1='390' x2='212' y2='376' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='248' y1='371' x2='238' y2='365' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='260' y1='353' x2='251' y2='346' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='274' y1='336' x2='264' y2='328' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='288' y1='319' x2='279' y2='311' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='303' y1='303' x2='283' y2='283' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='319' y1='288' x2='311' y2='279' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='336' y1='274' x2='328' y2='264' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='353' y1='260' x2='346' y2='251' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='371' y1='248' x2='365' y2='238' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='390' y1='236' x2='376' y2='212' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='409' y1='226' x2='404' y2='215' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='429' y1='216' x2='424' y2='205' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='449' y1='208' x2='445' y2='197' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='470' y1='201' x2='467' y2='189' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='491' y1='194' x2='484' y2='167' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='513' y1='189' x2='510' y2='177' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='534' y1='185' x2='532' y2='173' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='556' y1='182' x2='555' y2='170' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='578' y1='181' x2='577' y2='169' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='600' y1='180' x2='600' y2='152' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='622' y1='181' x2='623' y2='169' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='644' y1='182' x2='645' y2='170' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='666' y1='185' x2='668' y2='173' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='687' y1='189' x2='690' y2='177' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='709' y1='194' x2='716' y2='167' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='730' y1='201' x2='733' y2='189' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='751' y1='208' x2='755' y2='197' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='771' y1='216' x2='776' y2='205' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='791' y1='226' x2='796' y2='215' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='810' y1='236' x2='824' y2='212' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='829' y1='248' x2='835' y2='238' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='847' y1='260' x2='854' y2='251' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='864' y1='274' x2='872' y2='264' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='881' y1='288' x2='889' y2='279' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='897' y1='303' x2='917' y2='283' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='912' y1='319' x2='921' y2='311' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='926' y1='336' x2='936' y2='328' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='940' y1='353' x2='949' y2='346' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='952' y1='371' x2='962' y2='365' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='964' y1='390' x2='988' y2='376' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='974' y1='409' x2='985' y2='404' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='984' y1='429' x2='995' y2='424' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='992' y1='449' x2='1003' y2='445' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='999' y1='470' x2='1011' y2='467' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1006' y1='491' x2='1033' y2='484' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1011' y1='513' x2='1023' y2='510' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1015' y1='534' x2='1027' y2='532' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1018' y1='556' x2='1030' y2='555' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1019' y1='578' x2='1031' y2='577' stroke='%23fff' stroke-opacity='.7'/%3E%3Ccircle cx='600' cy='600' r='345' fill='none' stroke='%23fff' stroke-width='6' stroke-opacity='.85'/%3E%3Ccircle cx='600' cy='600' r='362' fill='none' stroke='%23fff' stroke-width='2' stroke-opacity='.6'/%3E%3C/svg%3E") center 58% / min(120vmin, 1500px) no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 1200'%3E%3Ccircle cx='600' cy='600' r='420' fill='none' stroke='%23fff' stroke-width='2' stroke-opacity='.9'/%3E%3Ccircle cx='600' cy='600' r='520' fill='none' stroke='%23fff' stroke-width='1' stroke-opacity='.55'/%3E%3Cline x1='980' y1='600' x2='1160' y2='600' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='967' y1='698' x2='1141' y2='745' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='929' y1='790' x2='1085' y2='880' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='869' y1='869' x2='996' y2='996' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='790' y1='929' x2='880' y2='1085' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='698' y1='967' x2='745' y2='1141' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='600' y1='980' x2='600' y2='1160' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='502' y1='967' x2='455' y2='1141' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='410' y1='929' x2='320' y2='1085' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='331' y1='869' x2='204' y2='996' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='271' y1='790' x2='115' y2='880' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='233' y1='698' x2='59' y2='745' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='220' y1='600' x2='40' y2='600' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='233' y1='502' x2='59' y2='455' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='271' y1='410' x2='115' y2='320' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='331' y1='331' x2='204' y2='204' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='410' y1='271' x2='320' y2='115' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='502' y1='233' x2='455' y2='59' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='600' y1='220' x2='600' y2='40' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='698' y1='233' x2='745' y2='59' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='790' y1='271' x2='880' y2='115' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='869' y1='331' x2='996' y2='204' stroke='%23fff' stroke-opacity='.45'/%3E%3Cline x1='929' y1='410' x2='1085' y2='320' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='967' y1='502' x2='1141' y2='455' stroke='%23fff' stroke-opacity='.2'/%3E%3Cline x1='1020' y1='600' x2='1048' y2='600' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1019' y1='622' x2='1031' y2='623' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1018' y1='644' x2='1030' y2='645' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1015' y1='666' x2='1027' y2='668' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1011' y1='687' x2='1023' y2='690' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1006' y1='709' x2='1033' y2='716' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='999' y1='730' x2='1011' y2='733' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='992' y1='751' x2='1003' y2='755' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='984' y1='771' x2='995' y2='776' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='974' y1='791' x2='985' y2='796' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='964' y1='810' x2='988' y2='824' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='952' y1='829' x2='962' y2='835' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='940' y1='847' x2='949' y2='854' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='926' y1='864' x2='936' y2='872' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='912' y1='881' x2='921' y2='889' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='897' y1='897' x2='917' y2='917' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='881' y1='912' x2='889' y2='921' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='864' y1='926' x2='872' y2='936' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='847' y1='940' x2='854' y2='949' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='829' y1='952' x2='835' y2='962' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='810' y1='964' x2='824' y2='988' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='791' y1='974' x2='796' y2='985' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='771' y1='984' x2='776' y2='995' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='751' y1='992' x2='755' y2='1003' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='730' y1='999' x2='733' y2='1011' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='709' y1='1006' x2='716' y2='1033' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='687' y1='1011' x2='690' y2='1023' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='666' y1='1015' x2='668' y2='1027' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='644' y1='1018' x2='645' y2='1030' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='622' y1='1019' x2='623' y2='1031' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='600' y1='1020' x2='600' y2='1048' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='578' y1='1019' x2='577' y2='1031' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='556' y1='1018' x2='555' y2='1030' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='534' y1='1015' x2='532' y2='1027' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='513' y1='1011' x2='510' y2='1023' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='491' y1='1006' x2='484' y2='1033' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='470' y1='999' x2='467' y2='1011' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='449' y1='992' x2='445' y2='1003' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='429' y1='984' x2='424' y2='995' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='409' y1='974' x2='404' y2='985' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='390' y1='964' x2='376' y2='988' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='371' y1='952' x2='365' y2='962' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='353' y1='940' x2='346' y2='949' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='336' y1='926' x2='328' y2='936' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='319' y1='912' x2='311' y2='921' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='303' y1='897' x2='283' y2='917' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='288' y1='881' x2='279' y2='889' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='274' y1='864' x2='264' y2='872' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='260' y1='847' x2='251' y2='854' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='248' y1='829' x2='238' y2='835' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='236' y1='810' x2='212' y2='824' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='226' y1='791' x2='215' y2='796' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='216' y1='771' x2='205' y2='776' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='208' y1='751' x2='197' y2='755' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='201' y1='730' x2='189' y2='733' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='194' y1='709' x2='167' y2='716' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='189' y1='687' x2='177' y2='690' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='185' y1='666' x2='173' y2='668' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='182' y1='644' x2='170' y2='645' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='181' y1='622' x2='169' y2='623' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='180' y1='600' x2='152' y2='600' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='181' y1='578' x2='169' y2='577' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='182' y1='556' x2='170' y2='555' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='185' y1='534' x2='173' y2='532' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='189' y1='513' x2='177' y2='510' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='194' y1='491' x2='167' y2='484' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='201' y1='470' x2='189' y2='467' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='208' y1='449' x2='197' y2='445' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='216' y1='429' x2='205' y2='424' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='226' y1='409' x2='215' y2='404' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='236' y1='390' x2='212' y2='376' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='248' y1='371' x2='238' y2='365' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='260' y1='353' x2='251' y2='346' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='274' y1='336' x2='264' y2='328' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='288' y1='319' x2='279' y2='311' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='303' y1='303' x2='283' y2='283' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='319' y1='288' x2='311' y2='279' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='336' y1='274' x2='328' y2='264' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='353' y1='260' x2='346' y2='251' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='371' y1='248' x2='365' y2='238' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='390' y1='236' x2='376' y2='212' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='409' y1='226' x2='404' y2='215' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='429' y1='216' x2='424' y2='205' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='449' y1='208' x2='445' y2='197' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='470' y1='201' x2='467' y2='189' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='491' y1='194' x2='484' y2='167' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='513' y1='189' x2='510' y2='177' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='534' y1='185' x2='532' y2='173' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='556' y1='182' x2='555' y2='170' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='578' y1='181' x2='577' y2='169' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='600' y1='180' x2='600' y2='152' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='622' y1='181' x2='623' y2='169' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='644' y1='182' x2='645' y2='170' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='666' y1='185' x2='668' y2='173' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='687' y1='189' x2='690' y2='177' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='709' y1='194' x2='716' y2='167' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='730' y1='201' x2='733' y2='189' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='751' y1='208' x2='755' y2='197' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='771' y1='216' x2='776' y2='205' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='791' y1='226' x2='796' y2='215' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='810' y1='236' x2='824' y2='212' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='829' y1='248' x2='835' y2='238' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='847' y1='260' x2='854' y2='251' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='864' y1='274' x2='872' y2='264' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='881' y1='288' x2='889' y2='279' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='897' y1='303' x2='917' y2='283' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='912' y1='319' x2='921' y2='311' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='926' y1='336' x2='936' y2='328' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='940' y1='353' x2='949' y2='346' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='952' y1='371' x2='962' y2='365' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='964' y1='390' x2='988' y2='376' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='974' y1='409' x2='985' y2='404' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='984' y1='429' x2='995' y2='424' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='992' y1='449' x2='1003' y2='445' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='999' y1='470' x2='1011' y2='467' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1006' y1='491' x2='1033' y2='484' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1011' y1='513' x2='1023' y2='510' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1015' y1='534' x2='1027' y2='532' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1018' y1='556' x2='1030' y2='555' stroke='%23fff' stroke-opacity='.7'/%3E%3Cline x1='1019' y1='578' x2='1031' y2='577' stroke='%23fff' stroke-opacity='.7'/%3E%3Ccircle cx='600' cy='600' r='345' fill='none' stroke='%23fff' stroke-width='6' stroke-opacity='.85'/%3E%3Ccircle cx='600' cy='600' r='362' fill='none' stroke='%23fff' stroke-width='2' stroke-opacity='.6'/%3E%3C/svg%3E") center 58% / min(120vmin, 1500px) no-repeat; }
+
+
 </style>
 </head>
 <body>
@@ -1591,7 +1610,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     card.style.removeProperty('--tilt-x'); card.style.removeProperty('--tilt-y');
   });
   // Las columnas de Intentos y Trazada se pliegan hacia su lado; los demás paneles, hacia arriba
-  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') ? (folded ? '▸' : '◂') : panel.classList.contains('map-panel') ? (folded ? '◂' : '▸') : (folded ? '▸' : '▾');
+  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') || panel.classList.contains('map-panel') ? (folded ? '▸' : '◂') : (folded ? '▸' : '▾');
   const panelKey = panel => (state.view ? state.view.name : '') + ':' + [...panel.parentElement.children].filter(item => item.classList.contains('panel')).indexOf(panel);
   new MutationObserver(() => {
     document.querySelectorAll('.panel > .panel-header:first-child:not([data-foldable])').forEach(header => {
@@ -1607,6 +1626,9 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (!button) return;
     const panel = button.closest('.panel'), folded = panel.classList.toggle('folded'), key = panelKey(panel);
     button.textContent = foldArrow(panel, folded);
+    // Al plegar o desplegar, el panel parpadea como un holograma que se enciende
+    panel.classList.remove('fold-flicker'); void panel.offsetWidth; panel.classList.add('fold-flicker');
+    panel.addEventListener('animationend', () => panel.classList.remove('fold-flicker'), { once: true });
     if (folded) foldedPanels.add(key); else foldedPanels.delete(key);
     writeStored('swgr.foldedPanels', [...foldedPanels].join('|'));
     if (state.analysis) requestAnimationFrame(drawAll);   // las columnas cambian de ancho: las gráficas y el mapa se dibujan a su tamaño nuevo
@@ -1676,7 +1698,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     const code = eventId.replace(/^LDB_ARC_/, '').split('_').find(word => PLANET_CODE_OF_EVENT_CODE[word.toUpperCase()]);
     return code ? PLANET_CODE_OF_EVENT_CODE[code.toUpperCase()] : 'Mystery';
   }
-  const planetArt = eventId => '<div class="event-art" aria-hidden="true"><svg class="planet-art" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">' + PLANET_ART[planetCodeOf(eventId)] + '</svg>' + vehicleIcon(eventId) + '</div>';
+  const planetDrawing = code => '<svg class="planet-art" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">' + PLANET_ART[code] + '</svg>';
+  const planetArt = eventId => '<div class="event-art" aria-hidden="true">' + planetDrawing(planetCodeOf(eventId)) + vehicleIcon(eventId) + '</div>';
 
   // ---------- Home: events grouped by planet ----------
   function eventCard(event) {
@@ -2361,9 +2384,19 @@ function deltaSeries(lapA, lapB, length, pointCount) {
       if (pickedRow) {
         const picked = lapFromValue(analysis, (referenceButton ? referenceButton.dataset.reference : pickedRow.dataset.lap));
         const pickedNumber = +picked.number, severalLaps = severalLapsEvent(analysis);
+        // La vuelta ideal (mejores sectores) es una vuelta lanzada: se compara con tu vuelta lanzada más rápida de
+        // ese intento, nunca con la salida ni con la carrera entera. La vuelta 1 ideal, con tu vuelta 1.
+        const idealScope = () => {
+          if (picked === analysis.idealStartLap) return 'start';
+          if (/^L\d+$/.test(state.replay.scope) && state.replay.scope !== 'L1') return state.replay.scope;
+          const session = selectedSessionId(analysis);
+          const best = fastest(analysis.laps.filter(lap => isOwnLap(lap) && lap.sessionId === session && lap.number > 1));
+          return best ? 'L' + best.number : 'L2';
+        };
         const wantedKind = !severalLaps ? (comparisonKind() === 'sector' ? state.replay.scope : 'lap')
           : comparisonKind() === 'sector' ? state.replay.scope
-          : pickedNumber >= 1 && !picked.isIdeal ? (pickedNumber === 1 ? 'start' : 'L' + pickedNumber) : comparisonKind() === 'race' ? 'start' : state.replay.scope;
+          : picked.isIdeal ? idealScope()
+          : pickedNumber >= 1 ? (pickedNumber === 1 ? 'start' : 'L' + pickedNumber) : comparisonKind() === 'race' ? 'start' : state.replay.scope;
         if (wantedKind !== state.replay.scope) {
           state.replay.scope = wantedKind; state.replay.segment = null;
           if (referenceButton) { analysis.lapB = picked; fitComparison(analysis); if (picked !== analysis.lapA) analysis.lapB = picked; }
@@ -3334,8 +3367,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   }
   // Options page: theme, hologram, animations, language and the ghost; saved in preferences.txt
   const THEME_NAMES = { sith: 'Sith', jedi: 'Jedi', imperial: 'Imperial', galactic: 'Galactic Racer' };
-  const PREFERENCE_DEFAULTS = { theme: 'sith', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
-    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game', selected_effect: 'hologram', selected_speed: 'normal', selected_lines: 'normal', selected_bands: 'one', page_speed: 'normal', page_bands: 'one', page_same_as_buttons: 'off' };   // ghost_*: el mod las lee al empezar la siguiente carrera
+  const PREFERENCE_DEFAULTS = { theme: 'galactic', hologram: 'off', animations: 'on', language: 'es', mode: 'tryhard', ghost_color: 'cyan',
+    ghost_enabled: 'on', ghost_transparency: 'medium', ghost_trail: 'off', ghost_trail_transparency: 'low', ghost_flame_mode: 'game', panel_aspect: '16x9', page_speed: 'normal', page_bands: 'one', page_image: 'on', ghost_source: 'best' };   // ghost_*: el mod las lee al empezar la siguiente carrera
   // Simple mode shows the essentials; Tryhard (the default) the whole analysis
   const isSimpleMode = () => preference('mode') === 'simple';
   const preference = key => ((state.data && state.data.preferences) || {})[key] || PREFERENCE_DEFAULTS[key];
@@ -3349,25 +3382,24 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     root.classList.toggle('hologram-soft', hologram === 'soft');
     root.classList.toggle('hologram-strong', hologram === 'strong');
     setAnimations(preference('animations') !== 'off');
-    // Efecto de la opción elegida: con el holograma de la app, siempre o nunca; su velocidad y sus líneas
-    const selectedEffect = preference('selected_effect');
-    root.classList.toggle('selected-holo', selectedEffect === 'always' || (selectedEffect === 'hologram' && root.classList.contains('hologram')));
-    root.style.setProperty('--selected-speed', { slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s');
-    root.style.setProperty('--selected-bands', { one: '1', two: '2', three: '3' }[preference('selected_bands')] || '1');
-    // Banda de luz del fondo: su propia velocidad y sus líneas, o las de los botones sin perder las suyas
-    const linked = preference('page_same_as_buttons') === 'on';
+    root.classList.toggle('page-image', preference('page_image') !== 'off');
+    // Barra de título de la ventana en el color de acento del tema (solo en la ventana de la app, con Windows 11)
+    if (typeof window.setTitleBarColor === 'function') {
+      const accent = getComputedStyle(root).getPropertyValue('--accent').trim();
+      const [red, green, blue] = [1, 3, 5].map(index => parseInt(accent.slice(index, index + 2), 16) || 0);
+      const light = (0.299 * red + 0.587 * green + 0.114 * blue) / 255 > 0.6;
+      Promise.resolve(window.setTitleBarColor(accent, light ? '#101214' : '#ffffff')).catch(() => {});
+    }
+    // Banda de luz del fondo: su velocidad y cuántas líneas bajan
     const pageNormal = root.classList.contains('hologram-strong') ? '5s' : '7s';
-    const pageSpeed = linked ? ({ slow: '5.5s', normal: '2.8s', fast: '1.3s' }[preference('selected_speed')] || '2.8s') : ({ slow: '11s', normal: pageNormal, fast: '3.5s' }[preference('page_speed')] || pageNormal);
-    const pageBands = preference(linked ? 'selected_bands' : 'page_bands');
+    const pageSpeed = ({ slow: '11s', normal: pageNormal, fast: '3.5s' }[preference('page_speed')] || pageNormal);
+    const pageBands = preference('page_bands');
     root.style.setProperty('--page-speed', pageSpeed);
     root.classList.toggle('page-bands-2', pageBands === 'two'); root.classList.toggle('page-bands-3', pageBands === 'three');
-    root.style.setProperty('--selected-gap', { few: '6px', normal: '3px', many: '2px' }[preference('selected_lines')] || '3px');
     root.classList.toggle('mode-simple', isSimpleMode());
     document.querySelectorAll('#modeButton [data-mode]').forEach(label => label.classList.toggle('chosen', label.dataset.mode === preference('mode')));
     document.querySelectorAll('#main [data-preference]').forEach(group => group.querySelectorAll('button').forEach(button =>
       button.setAttribute('aria-pressed', String(button.dataset.value === shownPreference(group.dataset.preference)))));
-    document.querySelectorAll('#main [data-preference="page_speed"], #main [data-preference="page_bands"]').forEach(group => group.closest('.group').classList.toggle('linked', linked));
-    if (byId('linkBands')) byId('linkBands').checked = linked;
   }
   // El valor que marca cada grupo de botones: la llama «No» es ghost_flame = off (la guarda el mod aparte del modo)
   const shownPreference = key => key === 'language' ? currentLanguage() : key === 'ghost_flame_mode' && preference('ghost_flame') === 'off' ? 'off' : preference(key);
@@ -3375,10 +3407,6 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (state.data) { state.data.preferences = state.data.preferences || {}; state.data.preferences[key] = value; }
     return postJson('/api/save', { kind: 'preference', key, value }).catch(() => {});
   }
-  document.addEventListener('change', changeEvent => {
-    if (changeEvent.target.id !== 'linkBands') return;
-    savePreference('page_same_as_buttons', changeEvent.target.checked ? 'on' : 'off'); applyPreferences();
-  });
   // The mode button of the top bar switches between Simple and Tryhard
   byId('modeButton').addEventListener('click', () => {
     savePreference('mode', isSimpleMode() ? 'tryhard' : 'simple'); applyPreferences();
@@ -3395,6 +3423,8 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (key === 'ghost_flame_mode') savePreference('ghost_flame', value === 'off' ? 'off' : 'on');
     applyPreferences();
     if (key === 'theme' || key === 'mode') repaintInPlace();
+    if (key === 'panel_aspect') drawRacePanel();
+    if (key === 'ghost_source') refreshData();   // la app vuelve a escribir los fantasmas de amigo según lo elegido
     if (key === 'hologram' && value !== 'off' && before === 'off') playPowerOnSweep();   // only when it is turned on
     if (preference('animations') !== 'off') playEntrance();
   });
@@ -3638,7 +3668,10 @@ function deltaSeries(lapA, lapB, length, pointCount) {
   // La muestra es la pantalla del juego reducida. El juego dibuja su interfaz sobre 3840 x 2160 y luego la
   // ajusta a tu resolución (en 1080p, a la mitad): con esa medida, la muestra sale igual que en el juego.
   // El panel se coloca arrastrándolo con el ratón.
+  // Con otra forma de pantalla (preferencia panel_aspect) la muestra se ensancha o se estrecha: la interfaz sigue
+  // midiendo 2160 de alto y el ancho cambia. La posición guardada es una proporción, así que el mod no cambia.
   const RACE_PANEL_SCREEN = { width: 3840, height: 2160 };
+  const RACE_PANEL_WIDTHS = { '16x9': 3840, '16x10': 3456, '21x9': 5120, '32x9': 7680 };
   // Medidas de cada estilo del panel del juego (timing_panel.lua): ancho, relleno, alto de fila y letras
   const RACE_PANEL_LAYOUTS = {
     sith: { width: 236, padding: 10, rowHeight: 21, fonts: [12, 15, 11, 13, 11] },
@@ -3690,6 +3723,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
       '<div class="race-panel-screen" id="racePanelScreen"><div class="race-panel-stage" id="racePanelStage"><div class="race-panel-preview" id="racePanelPreview" title="Arrástralo para colocarlo"></div></div></div>' +
       '<p class="note">Arrastra el panel en la pantalla de muestra para colocarlo. Los cambios se aplican en la siguiente carrera.</p>' +
       '<div class="group"><span>Colocar en</span><div class="options">' + placeButtons(places) + '</div></div>' +
+      '<div class="group"><span>Forma de tu pantalla</span><div class="options" data-preference="panel_aspect"><button type="button" data-value="16x9">16:9 · 1920x1080, 2560x1440, 4K</button><button type="button" data-value="16x10">16:10 · 1920x1200, 2560x1600</button><button type="button" data-value="21x9">21:9 · 2560x1080, 3440x1440</button><button type="button" data-value="32x9">32:9 · 5120x1440</button></div></div>' +
       '</div><div class="race-panel-right">' +
       '<div class="group"><span>Tamaño</span><input type="range" id="racePanelScale" min="0.6" max="2.2" step="0.05"><span class="muted" id="racePanelScaleText"></span></div>' +
       '<div class="group"><span>Opacidad del fondo</span><input type="range" id="racePanelOpacity" min="0" max="1" step="0.05"><span class="muted" id="racePanelOpacityText"></span></div>' +
@@ -3799,6 +3833,9 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     const background = color('background'), opacity = +racePanelValue('opacity');
     const channels = [1, 3, 5].map(index => parseInt(background.slice(index, index + 2), 16) || 0);
     Object.assign(preview.style, { width: layout.width + 'px', padding: '0 ' + layout.padding + 'px ' + layout.padding / 2 + 'px', background: 'rgba(' + channels.join(',') + ',' + opacity + ')' });
+    RACE_PANEL_SCREEN.width = RACE_PANEL_WIDTHS[preference('panel_aspect')] || 3840;
+    screen.style.aspectRatio = RACE_PANEL_SCREEN.width + ' / ' + RACE_PANEL_SCREEN.height;
+    stage.style.width = RACE_PANEL_SCREEN.width + 'px';
     const scale = +racePanelValue('scale'), zoom = screen.clientWidth / RACE_PANEL_SCREEN.width;
     state.racePanelZoom = zoom;
     stage.style.transform = 'scale(' + zoom + ')';
@@ -4219,22 +4256,36 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     '<div class="group"><span>Transparencia del fantasma</span><div class="options" data-preference="ghost_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>' +
     '<div class="group"><span>Llama del fantasma</span><div class="options" data-preference="ghost_flame_mode"><button type="button" data-value="game">Del juego</button><button type="button" data-value="own">Propia</button><button type="button" data-value="off">No</button></div></div>' +
     '<div class="group"><span>Estela del fantasma</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
-    '<div class="group"><span>Transparencia de la estela</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>';
+    '<div class="group"><span>Transparencia de la estela</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>' +
+    '<div class="group"><span>Fantasma a seguir</span><div class="options" data-preference="ghost_source"><button type="button" data-value="best">El más rápido</button><button type="button" data-value="mine">El tuyo</button><button type="button" data-value="friend">El de un amigo</button></div></div>' +
+    ghostFriendGroup();
+  // Amigo cuyos fantasmas se siguen (con «El de un amigo»); si no tiene fantasma en un evento, sale el más rápido
+  function ghostFriendGroup() {
+    const friends = friendPilots().map(friend => String(friend.pilot)), current = preference('ghost_friend');
+    if (!friends.length) return '<div class="group"><span>Amigo</span><span class="muted">Añade el archivo de un amigo para seguir sus fantasmas.</span></div>';
+    return '<div class="group"><span>Amigo</span><select id="ghostFriendSelect"><option value="">—</option>' +
+      friends.map(name => '<option value="' + escapeHtml(name) + '"' + (name === current ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select></div>';
+  }
+  document.addEventListener('change', async changeEvent => {
+    if (changeEvent.target.id !== 'ghostFriendSelect') return;
+    await savePreference('ghost_friend', changeEvent.target.value);
+    if (changeEvent.target.value && preference('ghost_source') !== 'friend') { await savePreference('ghost_source', 'friend'); applyPreferences(); }
+    await refreshData();   // la app vuelve a escribir los fantasmas de amigo con el elegido
+  });
   // Grupos de botones de la apariencia de la app
   const appearanceBody = () =>
+    '<h3 class="options-subtitle">General</h3>' +
     '<div class="group"><span>Tema</span><div class="options" data-preference="theme"><button type="button" data-value="sith">Sith</button><button type="button" data-value="jedi">Jedi</button><button type="button" data-value="imperial">Imperial</button><button type="button" data-value="galactic">Galactic Racer</button></div></div>' +
     '<div class="group"><span>Modo</span><div class="options" data-preference="mode"><button type="button" data-value="simple">Simple</button><button type="button" data-value="tryhard">Tryhard</button></div></div>' +
-    '<div class="group"><span>Efecto holograma</span><div class="options" data-preference="hologram"><button type="button" data-value="off">No</button><button type="button" data-value="soft">Suave</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Fuerte</button></div></div>' +
     '<div class="group"><span>Animaciones</span><div class="options" data-preference="animations"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
-    '<div class="group"><span>Efecto en la opción elegida</span><div class="options" data-preference="selected_effect"><button type="button" data-value="off">No</button><button type="button" data-value="hologram">Solo si Efecto holograma está activado</button><button type="button" data-value="always">Siempre, aunque esté en No</button></div></div>' +
-    '<div class="group"><span>Botones: velocidad de la luz</span><div class="options" data-preference="selected_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
-    '<div class="group"><span>Botones: líneas que bajan</span><div class="options" data-preference="selected_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>' +
-    '<div class="group"><span>Botones: líneas de barrido</span><div class="options" data-preference="selected_lines"><button type="button" data-value="few">Pocas</button><button type="button" data-value="normal">Normales</button><button type="button" data-value="many">Muchas</button></div></div>' +
-    '<div class="group"><span>Fondo igual que los botones</span><label class="tick-option"><input type="checkbox" id="linkBands"> Usar en el fondo la velocidad y las líneas de los botones</label></div>' +
-    '<div class="group"><span>Fondo: velocidad de la luz</span><div class="options" data-preference="page_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
-    '<div class="group"><span>Fondo: líneas que bajan</span><div class="options" data-preference="page_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>' +
     '<div class="group"><span>Idioma</span><div class="options" data-preference="language"><button type="button" data-value="es">Español</button><button type="button" data-value="en">English</button><button type="button" data-value="aurebesh" class="aurebesh-option">Aurebesh</button></div>' +
-    '<span class="aurebesh-missing" id="aurebeshMissing">El aurebesh necesita la fuente SF Distant Galaxy Symbols (ShyFonts, gratis para uso personal). No va dentro de la app por su licencia: instálala en Windows o ponla en la carpeta «fonts» y vuelve a abrir la app.</span></div>';
+    '<span class="aurebesh-missing" id="aurebeshMissing">El aurebesh necesita la fuente SF Distant Galaxy Symbols (ShyFonts, gratis para uso personal). No va dentro de la app por su licencia: instálala en Windows o ponla en la carpeta «fonts» y vuelve a abrir la app.</span></div>' +
+    '<h3 class="options-subtitle">Holograma</h3>' +
+    '<div class="group"><span>Efecto holograma</span><div class="options" data-preference="hologram"><button type="button" data-value="off">No</button><button type="button" data-value="soft">Suave</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Fuerte</button></div></div>' +
+    '<div class="group"><span>Imagen de fondo</span><div class="options" data-preference="page_image"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
+    '<h3 class="options-subtitle">Luz del fondo</h3>' +
+    '<div class="group"><span>Velocidad de la luz </span><div class="options" data-preference="page_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
+    '<div class="group"><span>Líneas que bajan </span><div class="options" data-preference="page_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>';
   // Apartados de Opciones, en el orden del menú lateral
   // Iconos de Opciones (dibujados para esta app): uno por apartado y uno por cada ajuste
   const EYE = '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>';
@@ -4264,6 +4315,10 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     compare_with: '<path d="M6 20V10M12 20V4M18 20v-7"/>',
     rows: '<path d="M4 6h16M4 12h16M4 18h16"/>', selected_lines: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     linkBands: '<path d="M9 15l6-6M10 6l1-1a4.500 4.500 0 0 1 7 7l-1 1M14 18l-1 1a4.500 4.500 0 0 1-7-7l1-1"/>',
+    panel_aspect: '<rect x="2" y="6" width="20" height="12" rx="1.500"/><path d="M6 10v4M18 10v4"/>',
+    page_image: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 3v18M3 12h18"/>',
+    ghost_source: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-3-2-2 2-2-2-2 2-2-2z"/><circle cx="9.500" cy="10" r="1"/><circle cx="14.500" cy="10" r="1"/>',
+    ghostFriendSelect: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c1-4 3.500-6 7-6s6 2 7 6"/><path d="M16 5a3.500 3.500 0 0 1 0 7M18 14c2 1 3.500 3 4 6"/>',
     page_speed: '<path d="M3.500 17a8.500 8.500 0 1 1 17 0"/><path d="M12 17l4.500-6"/>', page_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
     selected_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
     selected_effect: '<path d="M12 3l2.500 6.500L21 12l-6.500 2.500L12 21l-2.500-6.500L3 12l6.500-2.500z"/>',
@@ -4277,7 +4332,7 @@ function deltaSeries(lapA, lapB, length, pointCount) {
     if (preference) return preference.dataset.preference;
     if (panelKey) return panelKey.dataset.racePanelKey;
     if (range) return range.id;
-    if (find('#linkBands')) return 'linkBands';
+    if (find('#ghostFriendSelect')) return 'ghostFriendSelect';
     if (find('.race-panel-rows')) return 'rows';
     if (find('[data-race-panel-place]')) return 'place';
     if (find('[data-race-panel-palette]')) return 'palette';

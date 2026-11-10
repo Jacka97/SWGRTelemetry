@@ -252,9 +252,19 @@
       if (pickedRow) {
         const picked = lapFromValue(analysis, (referenceButton ? referenceButton.dataset.reference : pickedRow.dataset.lap));
         const pickedNumber = +picked.number, severalLaps = severalLapsEvent(analysis);
+        // La vuelta ideal (mejores sectores) es una vuelta lanzada: se compara con tu vuelta lanzada más rápida de
+        // ese intento, nunca con la salida ni con la carrera entera. La vuelta 1 ideal, con tu vuelta 1.
+        const idealScope = () => {
+          if (picked === analysis.idealStartLap) return 'start';
+          if (/^L\d+$/.test(state.replay.scope) && state.replay.scope !== 'L1') return state.replay.scope;
+          const session = selectedSessionId(analysis);
+          const best = fastest(analysis.laps.filter(lap => isOwnLap(lap) && lap.sessionId === session && lap.number > 1));
+          return best ? 'L' + best.number : 'L2';
+        };
         const wantedKind = !severalLaps ? (comparisonKind() === 'sector' ? state.replay.scope : 'lap')
           : comparisonKind() === 'sector' ? state.replay.scope
-          : pickedNumber >= 1 && !picked.isIdeal ? (pickedNumber === 1 ? 'start' : 'L' + pickedNumber) : comparisonKind() === 'race' ? 'start' : state.replay.scope;
+          : picked.isIdeal ? idealScope()
+          : pickedNumber >= 1 ? (pickedNumber === 1 ? 'start' : 'L' + pickedNumber) : comparisonKind() === 'race' ? 'start' : state.replay.scope;
         if (wantedKind !== state.replay.scope) {
           state.replay.scope = wantedKind; state.replay.segment = null;
           if (referenceButton) { analysis.lapB = picked; fitComparison(analysis); if (picked !== analysis.lapA) analysis.lapB = picked; }

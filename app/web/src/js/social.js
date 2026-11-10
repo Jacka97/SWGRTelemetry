@@ -61,22 +61,36 @@
     '<div class="group"><span>Transparencia del fantasma</span><div class="options" data-preference="ghost_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>' +
     '<div class="group"><span>Llama del fantasma</span><div class="options" data-preference="ghost_flame_mode"><button type="button" data-value="game">Del juego</button><button type="button" data-value="own">Propia</button><button type="button" data-value="off">No</button></div></div>' +
     '<div class="group"><span>Estela del fantasma</span><div class="options" data-preference="ghost_trail"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
-    '<div class="group"><span>Transparencia de la estela</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>';
+    '<div class="group"><span>Transparencia de la estela</span><div class="options" data-preference="ghost_trail_transparency"><button type="button" data-value="low">Baja</button><button type="button" data-value="medium">Media</button><button type="button" data-value="high">Alta</button></div></div>' +
+    '<div class="group"><span>Fantasma a seguir</span><div class="options" data-preference="ghost_source"><button type="button" data-value="best">El más rápido</button><button type="button" data-value="mine">El tuyo</button><button type="button" data-value="friend">El de un amigo</button></div></div>' +
+    ghostFriendGroup();
+  // Amigo cuyos fantasmas se siguen (con «El de un amigo»); si no tiene fantasma en un evento, sale el más rápido
+  function ghostFriendGroup() {
+    const friends = friendPilots().map(friend => String(friend.pilot)), current = preference('ghost_friend');
+    if (!friends.length) return '<div class="group"><span>Amigo</span><span class="muted">Añade el archivo de un amigo para seguir sus fantasmas.</span></div>';
+    return '<div class="group"><span>Amigo</span><select id="ghostFriendSelect"><option value="">—</option>' +
+      friends.map(name => '<option value="' + escapeHtml(name) + '"' + (name === current ? ' selected' : '') + '>' + escapeHtml(name) + '</option>').join('') + '</select></div>';
+  }
+  document.addEventListener('change', async changeEvent => {
+    if (changeEvent.target.id !== 'ghostFriendSelect') return;
+    await savePreference('ghost_friend', changeEvent.target.value);
+    if (changeEvent.target.value && preference('ghost_source') !== 'friend') { await savePreference('ghost_source', 'friend'); applyPreferences(); }
+    await refreshData();   // la app vuelve a escribir los fantasmas de amigo con el elegido
+  });
   // Grupos de botones de la apariencia de la app
   const appearanceBody = () =>
+    '<h3 class="options-subtitle">General</h3>' +
     '<div class="group"><span>Tema</span><div class="options" data-preference="theme"><button type="button" data-value="sith">Sith</button><button type="button" data-value="jedi">Jedi</button><button type="button" data-value="imperial">Imperial</button><button type="button" data-value="galactic">Galactic Racer</button></div></div>' +
     '<div class="group"><span>Modo</span><div class="options" data-preference="mode"><button type="button" data-value="simple">Simple</button><button type="button" data-value="tryhard">Tryhard</button></div></div>' +
-    '<div class="group"><span>Efecto holograma</span><div class="options" data-preference="hologram"><button type="button" data-value="off">No</button><button type="button" data-value="soft">Suave</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Fuerte</button></div></div>' +
     '<div class="group"><span>Animaciones</span><div class="options" data-preference="animations"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
-    '<div class="group"><span>Efecto en la opción elegida</span><div class="options" data-preference="selected_effect"><button type="button" data-value="off">No</button><button type="button" data-value="hologram">Solo si Efecto holograma está activado</button><button type="button" data-value="always">Siempre, aunque esté en No</button></div></div>' +
-    '<div class="group"><span>Botones: velocidad de la luz</span><div class="options" data-preference="selected_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
-    '<div class="group"><span>Botones: líneas que bajan</span><div class="options" data-preference="selected_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>' +
-    '<div class="group"><span>Botones: líneas de barrido</span><div class="options" data-preference="selected_lines"><button type="button" data-value="few">Pocas</button><button type="button" data-value="normal">Normales</button><button type="button" data-value="many">Muchas</button></div></div>' +
-    '<div class="group"><span>Fondo igual que los botones</span><label class="tick-option"><input type="checkbox" id="linkBands"> Usar en el fondo la velocidad y las líneas de los botones</label></div>' +
-    '<div class="group"><span>Fondo: velocidad de la luz</span><div class="options" data-preference="page_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
-    '<div class="group"><span>Fondo: líneas que bajan</span><div class="options" data-preference="page_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>' +
     '<div class="group"><span>Idioma</span><div class="options" data-preference="language"><button type="button" data-value="es">Español</button><button type="button" data-value="en">English</button><button type="button" data-value="aurebesh" class="aurebesh-option">Aurebesh</button></div>' +
-    '<span class="aurebesh-missing" id="aurebeshMissing">El aurebesh necesita la fuente SF Distant Galaxy Symbols (ShyFonts, gratis para uso personal). No va dentro de la app por su licencia: instálala en Windows o ponla en la carpeta «fonts» y vuelve a abrir la app.</span></div>';
+    '<span class="aurebesh-missing" id="aurebeshMissing">El aurebesh necesita la fuente SF Distant Galaxy Symbols (ShyFonts, gratis para uso personal). No va dentro de la app por su licencia: instálala en Windows o ponla en la carpeta «fonts» y vuelve a abrir la app.</span></div>' +
+    '<h3 class="options-subtitle">Holograma</h3>' +
+    '<div class="group"><span>Efecto holograma</span><div class="options" data-preference="hologram"><button type="button" data-value="off">No</button><button type="button" data-value="soft">Suave</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="strong">Fuerte</button></div></div>' +
+    '<div class="group"><span>Imagen de fondo</span><div class="options" data-preference="page_image"><button type="button" data-value="on">Sí</button><button type="button" data-value="off">No</button></div></div>' +
+    '<h3 class="options-subtitle">Luz del fondo</h3>' +
+    '<div class="group"><span>Velocidad de la luz </span><div class="options" data-preference="page_speed"><button type="button" data-value="slow">Lenta</button><button type="button" data-value="normal">Normal</button><button type="button" data-value="fast">Rápida</button></div></div>' +
+    '<div class="group"><span>Líneas que bajan </span><div class="options" data-preference="page_bands"><button type="button" data-value="one">Una</button><button type="button" data-value="two">Dos</button><button type="button" data-value="three">Tres</button></div></div>';
   // Apartados de Opciones, en el orden del menú lateral
   // Iconos de Opciones (dibujados para esta app): uno por apartado y uno por cada ajuste
   const EYE = '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>';
@@ -106,6 +120,10 @@
     compare_with: '<path d="M6 20V10M12 20V4M18 20v-7"/>',
     rows: '<path d="M4 6h16M4 12h16M4 18h16"/>', selected_lines: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     linkBands: '<path d="M9 15l6-6M10 6l1-1a4.500 4.500 0 0 1 7 7l-1 1M14 18l-1 1a4.500 4.500 0 0 1-7-7l1-1"/>',
+    panel_aspect: '<rect x="2" y="6" width="20" height="12" rx="1.500"/><path d="M6 10v4M18 10v4"/>',
+    page_image: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 3v18M3 12h18"/>',
+    ghost_source: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-3-2-2 2-2-2-2 2-2-2z"/><circle cx="9.500" cy="10" r="1"/><circle cx="14.500" cy="10" r="1"/>',
+    ghostFriendSelect: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c1-4 3.500-6 7-6s6 2 7 6"/><path d="M16 5a3.500 3.500 0 0 1 0 7M18 14c2 1 3.500 3 4 6"/>',
     page_speed: '<path d="M3.500 17a8.500 8.500 0 1 1 17 0"/><path d="M12 17l4.500-6"/>', page_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
     selected_bands: '<path d="M12 3v14M7 12l5 5 5-5M5 21h14"/>',
     selected_effect: '<path d="M12 3l2.500 6.500L21 12l-6.500 2.500L12 21l-2.500-6.500L3 12l6.500-2.500z"/>',
@@ -119,7 +137,7 @@
     if (preference) return preference.dataset.preference;
     if (panelKey) return panelKey.dataset.racePanelKey;
     if (range) return range.id;
-    if (find('#linkBands')) return 'linkBands';
+    if (find('#ghostFriendSelect')) return 'ghostFriendSelect';
     if (find('.race-panel-rows')) return 'rows';
     if (find('[data-race-panel-place]')) return 'place';
     if (find('[data-race-panel-palette]')) return 'palette';

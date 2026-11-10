@@ -54,10 +54,6 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
 .options-page .group > span:first-child { display: flex; align-items: center; gap: 7px; }
 .options-page .group > span:first-child .option-icon { width: 16px; height: 16px; color: var(--accent); }
 
-.tick-option { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
-.tick-option input { width: 16px; height: 16px; accent-color: var(--accent); }
-/* Con el tick puesto mandan los ajustes de los botones; los del fondo se conservan, pero no se tocan */
-.options-page .group.linked { opacity: .4; pointer-events: none; }
 
 /* Apariencia de la app: en columnas, para que quepa entera sin desplazar la ventana */
 @media (min-width: 901px) {
@@ -76,3 +72,6 @@ html.language-aurebesh .options-page .group, html.language-aurebesh .options-pag
   .options-page { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
   .options-content { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
 }
+
+/* Apariencia: subtítulos de cada bloque de ajustes */
+.options-subtitle { margin: 10px 0 2px; font-family: var(--aurebesh-font) var(--font-display); font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 4px; }

@@ -3,7 +3,10 @@
   // La muestra es la pantalla del juego reducida. El juego dibuja su interfaz sobre 3840 x 2160 y luego la
   // ajusta a tu resolución (en 1080p, a la mitad): con esa medida, la muestra sale igual que en el juego.
   // El panel se coloca arrastrándolo con el ratón.
+  // Con otra forma de pantalla (preferencia panel_aspect) la muestra se ensancha o se estrecha: la interfaz sigue
+  // midiendo 2160 de alto y el ancho cambia. La posición guardada es una proporción, así que el mod no cambia.
   const RACE_PANEL_SCREEN = { width: 3840, height: 2160 };
+  const RACE_PANEL_WIDTHS = { '16x9': 3840, '16x10': 3456, '21x9': 5120, '32x9': 7680 };
   // Medidas de cada estilo del panel del juego (timing_panel.lua): ancho, relleno, alto de fila y letras
   const RACE_PANEL_LAYOUTS = {
     sith: { width: 236, padding: 10, rowHeight: 21, fonts: [12, 15, 11, 13, 11] },
@@ -55,6 +58,7 @@
       '<div class="race-panel-screen" id="racePanelScreen"><div class="race-panel-stage" id="racePanelStage"><div class="race-panel-preview" id="racePanelPreview" title="Arrástralo para colocarlo"></div></div></div>' +
       '<p class="note">Arrastra el panel en la pantalla de muestra para colocarlo. Los cambios se aplican en la siguiente carrera.</p>' +
       '<div class="group"><span>Colocar en</span><div class="options">' + placeButtons(places) + '</div></div>' +
+      '<div class="group"><span>Forma de tu pantalla</span><div class="options" data-preference="panel_aspect"><button type="button" data-value="16x9">16:9 · 1920x1080, 2560x1440, 4K</button><button type="button" data-value="16x10">16:10 · 1920x1200, 2560x1600</button><button type="button" data-value="21x9">21:9 · 2560x1080, 3440x1440</button><button type="button" data-value="32x9">32:9 · 5120x1440</button></div></div>' +
       '</div><div class="race-panel-right">' +
       '<div class="group"><span>Tamaño</span><input type="range" id="racePanelScale" min="0.6" max="2.2" step="0.05"><span class="muted" id="racePanelScaleText"></span></div>' +
       '<div class="group"><span>Opacidad del fondo</span><input type="range" id="racePanelOpacity" min="0" max="1" step="0.05"><span class="muted" id="racePanelOpacityText"></span></div>' +
@@ -164,6 +168,9 @@
     const background = color('background'), opacity = +racePanelValue('opacity');
     const channels = [1, 3, 5].map(index => parseInt(background.slice(index, index + 2), 16) || 0);
     Object.assign(preview.style, { width: layout.width + 'px', padding: '0 ' + layout.padding + 'px ' + layout.padding / 2 + 'px', background: 'rgba(' + channels.join(',') + ',' + opacity + ')' });
+    RACE_PANEL_SCREEN.width = RACE_PANEL_WIDTHS[preference('panel_aspect')] || 3840;
+    screen.style.aspectRatio = RACE_PANEL_SCREEN.width + ' / ' + RACE_PANEL_SCREEN.height;
+    stage.style.width = RACE_PANEL_SCREEN.width + 'px';
     const scale = +racePanelValue('scale'), zoom = screen.clientWidth / RACE_PANEL_SCREEN.width;
     state.racePanelZoom = zoom;
     stage.style.transform = 'scale(' + zoom + ')';

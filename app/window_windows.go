@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
@@ -49,8 +51,43 @@ func openWindow(url, title string) {
 	}
 	defer window.Destroy()
 	window.SetSize(1440, 920, webview2.HintNone)
+	// La página pide el color de la barra de título al aplicar el tema (el de acento, con texto que se lea)
+	window.Bind("setTitleBarColor", func(caption, text string) { setTitleBarColor(uintptr(window.Window()), caption, text) })
 	window.Navigate(url)
 	window.Run()
+}
+
+// Barra de título del color del tema (Windows 11: DWMWA_CAPTION_COLOR y DWMWA_TEXT_COLOR).
+// En Windows 10 no existe y se queda la barra normal. dwmapi.dll se carga de System32 a propósito:
+// en la carpeta del juego hay otro dwmapi.dll, el de UE4SS.
+func setTitleBarColor(window uintptr, caption, text string) {
+	dwmapi := syscall.NewLazyDLL(filepath.Join(os.Getenv("SystemRoot"), "System32", "dwmapi.dll"))
+	setAttribute := dwmapi.NewProc("DwmSetWindowAttribute")
+	if window == 0 || setAttribute.Find() != nil {
+		return
+	}
+	for _, pair := range []struct {
+		attribute uintptr
+		color     string
+	}{{35, caption}, {36, text}} {
+		if value, ok := colorReference(pair.color); ok {
+			setAttribute.Call(window, pair.attribute, uintptr(unsafe.Pointer(&value)), 4)
+		}
+	}
+}
+
+// colorReference turns "#rrggbb" into the COLORREF of Windows (0x00bbggrr).
+func colorReference(hex string) (uint32, bool) {
+	hex = strings.TrimPrefix(strings.TrimSpace(hex), "#")
+	if len(hex) != 6 {
+		return 0, false
+	}
+	value, err := strconv.ParseUint(hex, 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	red, green, blue := uint32(value>>16)&0xff, uint32(value>>8)&0xff, uint32(value)&0xff
+	return red | green<<8 | blue<<16, true
 }
 
 // Opens the File Explorer with the file selected

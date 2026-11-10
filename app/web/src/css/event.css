@@ -14,10 +14,10 @@
 .event-view { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
 .event-body { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(380px, 0.9fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; gap: 12px; min-height: 0; }
 .event-left, .event-center, .analysis-map { min-height: 0; min-width: 0; }
-.event-left { display: grid; grid-template-rows: minmax(120px, 1fr); overflow: hidden; }
+.event-left { display: grid; grid-template-rows: minmax(120px, 1fr); grid-template-columns: minmax(0, 1fr); overflow: hidden; }   /* la columna no crece con el contenido */
 .attempts-panel > .panel-header { flex-wrap: nowrap; }
 .attempts-panel > .panel-header > .muted { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.attempts-panel { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; }
+.attempts-panel { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); min-height: 0; overflow: hidden; }   /* su columna interior tampoco crece con el contenido */
 .attempt-list { overflow: auto; min-height: 0; display: grid; gap: 3px; align-content: start; padding-right: 2px; }
 .attempt { display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; row-gap: 1px; align-items: center; padding: 5px 8px; border: 1px solid var(--line);
   background: var(--surface-low); cursor: pointer; font-size: 0.82rem; }
@@ -27,7 +27,7 @@
 .attempt-date { color: var(--text-muted); font-family: var(--font-data); }
 .attempt-total { font-size: 0.95rem; text-align: right; }
 .attempt-laps { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 0 9px; color: var(--text-muted); font-size: 0.74rem; }
-.event-center { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
+.event-center { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
 /* Datos del intento en columnas fijas y etiquetas en su propia fila: siempre en el mismo sitio, sea cual sea el evento */
 .focus-info { display: grid; grid-template-columns: 10.5rem 5.5rem auto 5.5rem; justify-content: start; align-items: center; gap: 4px 10px; font-size: 0.84rem; min-height: 1.6em; }
 .focus-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; min-height: 1.7em; align-items: center; }
@@ -58,10 +58,6 @@ html.versus-folded .versus-side { display: none; }
   html:not(.mode-simple) .event-body { grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr); grid-template-rows: 170px minmax(0, 1fr); }
   html:not(.mode-simple) .event-left { grid-column: 1 / -1; }
 }
-/* El panel central solo enseña su botón de plegar, en la esquina; el título sale al plegarlo */
-.center-header { position: absolute; top: 8px; right: 8px; z-index: 3; border: 0; padding: 0; margin: 0; background: none; }
-.event-center:not(.folded) > .center-header > h2 { display: none !important; }
-.event-center:not(.folded) > .focus-info { padding-right: 44px; }
 /* Columnas: al plegar una se queda en una tira y las demás ocupan el sitio */
 @media (min-width: 1251px) {
   html:not(.mode-simple) .event-body { --left: 300px; --center: minmax(0, 1fr); --right: minmax(380px, 0.9fr); grid-template-columns: var(--left) var(--center) var(--right); }
@@ -69,20 +65,23 @@ html.versus-folded .versus-side { display: none; }
   html:not(.mode-simple) .event-body:has(> .event-center.folded) { --center: 46px; --right: minmax(0, 1fr); }
   html:not(.mode-simple) .event-body:has(> .analysis-map > .map-panel.folded) { --right: 46px; }
   html:not(.mode-simple) .event-body:has(> .event-center.folded):has(> .analysis-map > .map-panel.folded) { --left: minmax(0, 1fr); }
+  html:not(.mode-simple) .event-body:has(> .event-left > .attempts-panel.folded):has(> .event-center.folded):has(> .analysis-map > .map-panel.folded) { --left: 46px; justify-content: start; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
-  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; margin: 0; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { writing-mode: vertical-rl; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
   html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
-  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+  html:not(.mode-simple) :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; position: static; }
 }
 @media (min-width: 901px) {
   html.mode-simple .event-body:has(> .event-left > .attempts-panel.folded) { grid-template-columns: 46px minmax(0, 1fr); }
   html.mode-simple .event-body:has(> .analysis-map > .map-panel.folded) { grid-template-columns: minmax(0, 1fr) 46px; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded { padding: 8px 2px; height: 100%; overflow: hidden; }
-  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; writing-mode: vertical-rl; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header { position: static; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; margin: 0; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { writing-mode: vertical-rl; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > :not(h2):not(.fold-button) { display: none; }
   html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded > .panel-header > h2 { display: block; }
-  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; writing-mode: horizontal-tb; }
+  html.mode-simple :is(.attempts-panel, .map-panel, .event-center).folded .fold-button { order: -1; margin: 0; position: static; }
 }
 /* Modo simple: Intentos y Amigos, pestañas del mismo panel */
 html.mode-simple .attempts-panel { display: flex; flex-direction: column; gap: 8px; }
@@ -167,3 +166,17 @@ canvas { display: block; width: 100%; }
 .note { font-size: 0.82rem; color: var(--text-muted); max-width: 90ch; }
 #map { cursor: grab; touch-action: none; }
 #map.dragging { cursor: grabbing; }
+
+/* Intentos: el panel no puede ser más ancho que su columna (el texto de ayuda sin partir lo ensanchaba y cortaba la lista y el botón de plegar) */
+.event-left > .attempts-panel, .attempts-panel .attempt-list, .attempts-panel .attempt { min-width: 0; }
+.attempts-panel > .panel-header > .fold-button { flex: none; }
+/* Trazada: el botón de plegar arriba a la derecha, a la altura del título, aunque los botones del mapa bajen de línea */
+.map-panel > .panel-header { position: static; padding-right: 40px; }
+.map-panel.folded > .panel-header { padding-right: 0; }
+.map-panel.folded > .panel-header > .fold-button { position: static; }
+/* Galactic Racer: el título de Trazada en amarillo como los demás (lleva un color propio para el mapa) */
+html[data-theme="galactic"] .map-panel > .panel-header > h2 { color: var(--warning) !important; }
+/* Botón de plegar de las tres columnas: el mismo sitio en todas, a 8 px de la esquina de arriba a la derecha de su panel */
+:is(.attempts-panel, .event-center, .map-panel):not(.folded) > .panel-header > .fold-button { position: absolute; top: 8px; right: 8px; z-index: 3; margin: 0; }
+.attempts-panel:not(.folded) > .panel-header { padding-right: 40px; position: static; }   /* el botón se mide desde el panel, no desde su cabecera */
+.event-center:not(.folded) > .center-header { padding-right: 40px; }   /* Análisis con su título, como Intentos y Trazada */

@@ -126,7 +126,13 @@ func writeRivals(modFolder string, friends []json.RawMessage) {
 // race_ghosts\<event>.friend.txt so the mod can show it as a ghost in the race (0.9.29).
 // First line: total and pilot; then one point every 0.1 s: time since the start, x, y.
 func writeFriendGhosts(modFolder string, friends []json.RawMessage) {
-	myName := strings.ToLower(strings.TrimSpace(loadKeyValues(modFilePath(modFolder, "preferences.txt"))["pilot_name"]))
+	preferences := loadKeyValues(modFilePath(modFolder, "preferences.txt"))
+	myName := strings.ToLower(strings.TrimSpace(preferences["pilot_name"]))
+	// Fantasma a seguir (Opciones): con «friend», el del amigo elegido en cada evento donde lo tenga
+	chosenFriend := ""
+	if preferences["ghost_source"] == "friend" {
+		chosenFriend = strings.ToLower(strings.TrimSpace(preferences["ghost_friend"]))
+	}
 	type lap struct {
 		Time         float64     `json:"time"`
 		OfficialTime float64     `json:"officialTime"`
@@ -146,6 +152,7 @@ func writeFriendGhosts(modFolder string, friends []json.RawMessage) {
 		ghost string // the in-game ghost as the mod saved it (0.9.29), better than rebuilding it from laps
 	}
 	best := map[string]choice{}
+	chosen := map[string]choice{}
 	for _, raw := range friends {
 		var file struct {
 			Pilot  string           `json:"pilot"`
@@ -160,11 +167,17 @@ func writeFriendGhosts(modFolder string, friends []json.RawMessage) {
 				if previous, found := best[id]; !found || total < previous.total {
 					best[id] = choice{total: total, pilot: pilot, ghost: value.RaceGhost}
 				}
+				if chosenFriend != "" && strings.ToLower(strings.TrimSpace(file.Pilot)) == chosenFriend {
+					chosen[id] = choice{total: total, pilot: pilot, ghost: value.RaceGhost}
+				}
 				continue
 			}
 			// Files without the in-game ghost (before 0.9.29): a ghost rebuilt from the laps goes out of
 			// step at the start, so no ghost is made from them.
 		}
+	}
+	for id, race := range chosen {
+		best[id] = race // el amigo elegido manda; donde no tenga fantasma, queda el más rápido
 	}
 	folder := filepath.Join(modFolder, "race_ghosts")
 	os.MkdirAll(folder, 0o755) // the mod saves your own ghosts here too (Lua cannot create folders)

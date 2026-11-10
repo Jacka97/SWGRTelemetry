@@ -61,7 +61,7 @@
     card.style.removeProperty('--tilt-x'); card.style.removeProperty('--tilt-y');
   });
   // Las columnas de Intentos y Trazada se pliegan hacia su lado; los demás paneles, hacia arriba
-  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') ? (folded ? '▸' : '◂') : panel.classList.contains('map-panel') ? (folded ? '◂' : '▸') : (folded ? '▸' : '▾');
+  const foldArrow = (panel, folded) => panel.classList.contains('attempts-panel') || panel.classList.contains('event-center') || panel.classList.contains('map-panel') ? (folded ? '▸' : '◂') : (folded ? '▸' : '▾');
   const panelKey = panel => (state.view ? state.view.name : '') + ':' + [...panel.parentElement.children].filter(item => item.classList.contains('panel')).indexOf(panel);
   new MutationObserver(() => {
     document.querySelectorAll('.panel > .panel-header:first-child:not([data-foldable])').forEach(header => {
@@ -77,6 +77,9 @@
     if (!button) return;
     const panel = button.closest('.panel'), folded = panel.classList.toggle('folded'), key = panelKey(panel);
     button.textContent = foldArrow(panel, folded);
+    // Al plegar o desplegar, el panel parpadea como un holograma que se enciende
+    panel.classList.remove('fold-flicker'); void panel.offsetWidth; panel.classList.add('fold-flicker');
+    panel.addEventListener('animationend', () => panel.classList.remove('fold-flicker'), { once: true });
     if (folded) foldedPanels.add(key); else foldedPanels.delete(key);
     writeStored('swgr.foldedPanels', [...foldedPanels].join('|'));
     if (state.analysis) requestAnimationFrame(drawAll);   // las columnas cambian de ancho: las gráficas y el mapa se dibujan a su tamaño nuevo
@@ -146,7 +149,8 @@
     const code = eventId.replace(/^LDB_ARC_/, '').split('_').find(word => PLANET_CODE_OF_EVENT_CODE[word.toUpperCase()]);
     return code ? PLANET_CODE_OF_EVENT_CODE[code.toUpperCase()] : 'Mystery';
   }
-  const planetArt = eventId => '<div class="event-art" aria-hidden="true"><svg class="planet-art" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">' + PLANET_ART[planetCodeOf(eventId)] + '</svg>' + vehicleIcon(eventId) + '</div>';
+  const planetDrawing = code => '<svg class="planet-art" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice">' + PLANET_ART[code] + '</svg>';
+  const planetArt = eventId => '<div class="event-art" aria-hidden="true">' + planetDrawing(planetCodeOf(eventId)) + vehicleIcon(eventId) + '</div>';
 
   // ---------- Home: events grouped by planet ----------
   function eventCard(event) {
