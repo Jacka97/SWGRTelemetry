@@ -111,4 +111,9 @@ Appearance and shortcuts
   - Event page: Attempts, the central panel and Track fold with their button, and so does
     the Compare box.
   - Precision (tryhard mode): the map and the speed chart mark the points you missed.
-  - Options > App appearance: hologram effect, and the light on buttons and background.
+  - Options > App appearance: theme (Galactic Racer by default), hologram effect, background
+    image and the light that runs down the background.
+  - Options > In-track ghost > Ghost to follow: the fastest, yours or a friend's.
+  - Options > In-race panel: pick the shape of your screen (16:9, 16:10, 21:9 or 32:9) so the
+    sample looks like your game.
+  - On Windows 11, the window title bar takes the colour of the theme.

@@ -112,4 +112,9 @@ Apariencia y atajos
   - Página del evento: Intentos, el panel central y Trazada se pliegan con su botón, y el
     recuadro de Comparar también.
   - Precisión (modo tryhard): el mapa y la gráfica de velocidad marcan los puntos que te saltaste.
-  - Opciones > Apariencia de la app: efecto holograma, y la luz de los botones y del fondo.
+  - Opciones > Apariencia de la app: tema (Galactic Racer por defecto), efecto holograma, imagen
+    de fondo y la luz que baja por el fondo.
+  - Opciones > Fantasma en pista > Fantasma a seguir: el más rápido, el tuyo o el de un amigo.
+  - Opciones > Panel en carrera: elige la forma de tu pantalla (16:9, 16:10, 21:9 o 32:9) para
+    que la muestra se vea como en tu juego.
+  - Con Windows 11, la barra de la ventana toma el color del tema.

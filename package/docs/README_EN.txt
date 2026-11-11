@@ -91,9 +91,13 @@ Arcade only
   Quick restarts: if you restart before 20 s of racing, only the attempt is counted (no files).
 
 In-track ghost
-  A hologram of your vehicle runs the fastest whole race of the event: yours or your fastest
-  friend's (the app takes it from their pilot file). It is for comparing racing lines while you
-  race; it has no collision and does not count as a racer.
+  A hologram of your vehicle runs a whole race of the event. It is for comparing racing lines
+  while you race; it has no collision and does not count as a racer.
+  Which one shows is chosen in the app, ⚙ menu > In-track ghost > Ghost to follow:
+  - The fastest (default): yours or your fastest friend's, whichever has the better time.
+  - Yours: always your best race.
+  - A friend: the one of the friend you pick (the app takes it from their pilot file).
+  If the chosen one does not exist in that event, the fastest available shows.
   Your ghost is saved at the end of the event when you improve your total (race_ghosts\<event>.txt).
   The first time in an event there is no ghost: it shows from the second race.
   Colour: in the app, ⚙ menu > In-track ghost colour (it applies from the next race).

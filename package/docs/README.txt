@@ -92,9 +92,13 @@ Solo Arcade
   guardan archivos).
 
 Fantasma en pista
-  Un holograma de tu vehículo recorre la carrera entera más rápida del evento: la tuya o la de tu
-  amigo más rápido (la app la saca de su archivo de piloto). Sirve para comparar trazadas mientras
-  corres; no tiene colisión ni cuenta como corredor.
+  Un holograma de tu vehículo recorre una carrera entera del evento. Sirve para comparar trazadas
+  mientras corres; no tiene colisión ni cuenta como corredor.
+  Cuál sale se elige en la app, menú ⚙ > Fantasma en pista > Fantasma a seguir:
+  - El más rápido (por defecto): el tuyo o el de tu amigo más rápido, el que tenga mejor tiempo.
+  - El tuyo: siempre tu mejor carrera.
+  - El de un amigo: el del amigo que elijas (la app lo saca de su archivo de piloto).
+  Si lo elegido no existe en ese evento, sale el más rápido de los que haya.
   Tu fantasma se guarda al terminar el evento cuando mejoras tu total (race_ghosts\<evento>.txt).
   La primera vez en un evento no hay fantasma: aparece desde la segunda carrera.
   Color: en la app, menú ⚙ > Color del fantasma en pista (se aplica en la siguiente carrera).
