@@ -18,13 +18,10 @@ Usage
   Enter an Arcade event: the mod detects the track and starts recording on its own.
   Ctrl+F9: pause / resume recording.
   Ctrl+F10: show / hide the timing panel.
-  Ctrl+Shift+K: search the game for where it keeps your records (creates record_search.txt;
-                record_search_progress.txt says how far it got, in case something fails).
-                Also works in the menus. It can freeze the game for a few seconds.
 
 Safe mode
   If the game closes suddenly while the mod is doing something delicate (creating the panel,
-  reading your records, the Ctrl+Shift+K search or hooking into the race), that part is turned
+  reading your records or hooking into the race), that part is turned
   off the next time you open the game and everything else keeps working. It is noted in
   logs\safe_mode.txt and the app shows it at the top. If errors keep coming non-stop (for instance
   after a game patch), the mod stops recording for that session instead of insisting.
@@ -73,7 +70,6 @@ Files it creates
   data\learned_tracks.txt           finish line and number of laps of each circuit
   data\ghosts.txt                   your reference lap of each event, for the live difference
   data\game_records.txt             your game records, read from the Arcade menu
-  logs\diagnostics.txt              internal data of the last race (to improve the mod)
   config\timing_panel.ini           timing panel settings
   race_ghosts\                      your race ghost of each event and your fastest friend's
   tracks\<track>\                   one folder per circuit and direction, with:

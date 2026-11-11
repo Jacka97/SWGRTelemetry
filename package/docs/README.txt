@@ -18,13 +18,10 @@ Uso
   Entra en un evento de Arcade: el mod detecta el circuito y empieza a grabar solo.
   Ctrl+F9: pausar / reanudar la grabación.
   Ctrl+F10: mostrar / ocultar el panel de tiempos.
-  Ctrl+Shift+K: buscar en el juego dónde guarda tus récords (crea record_search.txt;
-                record_search_progress.txt dice por dónde va, por si algo falla).
-                Funciona también en los menús. Puede congelar el juego unos segundos.
 
 Modo seguro
   Si el juego se cierra de golpe mientras el mod hace algo delicado (crear el panel, leer tus
-  récords, la búsqueda de Ctrl+Shift+K o engancharse a la carrera), al volver a abrir el juego
+  récords o engancharse a la carrera), al volver a abrir el juego
   esa parte queda desactivada y lo demás sigue funcionando. Se apunta en safe_mode.txt y la
   app lo enseña arriba. Si salen errores sin parar (por ejemplo tras un parche del juego), el
   mod deja de grabar en esa partida en vez de insistir.
@@ -73,7 +70,6 @@ Archivos que genera
   data\learned_tracks.txt           meta y número de vueltas de cada circuito
   data\ghosts.txt                   tu vuelta de referencia de cada evento, para la diferencia en directo
   data\game_records.txt             tus récords del juego, leídos del menú de Arcade
-  logs\diagnostics.txt              datos internos de la última carrera (para mejorar el mod)
   config\timing_panel.ini           ajustes del panel de tiempos
   race_ghosts\                      tu fantasma de carrera de cada evento y el de tu amigo más rápido
   tracks\<trazado>\                 una carpeta por circuito y sentido, con:
